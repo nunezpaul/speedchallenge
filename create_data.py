@@ -29,7 +29,7 @@ def convert_video_to_img(file):
                 image_path = 'data/images/img_{idx}.jpg'.format(idx=idx)
                 cv.imwrite(image_path, image)
 
-                writer.writerow({'image_path': image_path, 'speed': speed})
+                # writer.writerow({'image_path': image_path, 'speed': speed})
 
             if idx % 1000 == 0:
                 print(idx)
