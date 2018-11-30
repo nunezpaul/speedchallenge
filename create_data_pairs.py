@@ -27,13 +27,41 @@ def write_image_value_pairs(file):
     return image_label_file
 
 
+def train_test_split(filename, split=10):
+    datafilenames = {}
+    datafiles = {}
+
+    # Create filenames and open train/test files to be written
+    for data_type in ('train', 'test'):
+        datafilenames[data_type] = 'data/{type}_image_value_pairs.csv'.format(type=data_type)
+        datafiles[data_type] = open(datafilenames[data_type], 'w')
+
+    # Read each line of the main image_value_pair
+    with open(filename) as f:
+        data = f.read().splitlines()
+
+    # Separating the files now. Every Kth data point is for testing
+    count = 1
+    for idx, line in enumerate(data):
+        if count == split:
+            count = 1
+            datafiles['test'].write(line + '\n')
+            continue
+
+        datafiles['train'].write(line + '\n')
+        count += 1
+
+    print('done!')
+    return datafilenames['train']
+
+
+
 def shard_data(filename, num_shards=10):
     datafilenames = {}
     datafiles = {}
-    shards = [i for i in range(num_shards)]
 
     # Create filenames and open shard files to be written
-    for shard in shards:
+    for shard in range(num_shards):
         datafilenames[shard] = 'data/sharded_image_value_pairs/image_value_pairs_{shard}.csv'.format(shard=shard)
         datafiles[shard] = open(datafilenames[shard], 'w')
 
@@ -66,5 +94,6 @@ def shuffle_sharded_data(filenames):
 if __name__ == '__main__':
     file = 'data/train.{extension}'
     image_label_file = write_image_value_pairs(file)
-    shard_file_names = shard_data(image_label_file)
+    train_image_label_file = train_test_split(image_label_file)
+    shard_file_names = shard_data(train_image_label_file)
     shuffle_sharded_data(shard_file_names)
