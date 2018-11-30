@@ -1,4 +1,5 @@
 import csv
+import os
 
 from random import shuffle
 
@@ -19,8 +20,8 @@ def write_image_value_pairs(file):
             if idx % 2 == 0:
                 continue
 
-            curr_image_path = 'data/images/img{idx}.jpg'.format(idx=idx)
-            prev_image_path = 'data/images/img{idx}.jpg'.format(idx=idx - 1)
+            curr_image_path = 'data/train_images/img{idx}.jpg'.format(idx=idx)
+            prev_image_path = 'data/train_images/img{idx}.jpg'.format(idx=idx - 1)
             writer.writerow({'prev_image_path': prev_image_path, 'curr_image_path': curr_image_path, 'speed': speed})
 
     print('done!')
@@ -32,7 +33,7 @@ def train_test_split(filename, split=10):
     datafiles = {}
 
     # Create filenames and open train/test files to be written
-    for data_type in ('train', 'test'):
+    for data_type in ('train', 'val'):
         datafilenames[data_type] = 'data/{type}_image_value_pairs.csv'.format(type=data_type)
         datafiles[data_type] = open(datafilenames[data_type], 'w')
 
@@ -97,3 +98,5 @@ if __name__ == '__main__':
     train_image_label_file = train_test_split(image_label_file)
     shard_file_names = shard_data(train_image_label_file)
     shuffle_sharded_data(shard_file_names)
+    os.remove('data/image_value_pairs.csv')
+    os.remove('data/train_image_value_pairs.csv')

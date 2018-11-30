@@ -16,4 +16,4 @@ mkdir data/sharded_image_value_pairs
 python create_data_pairs.py
 
 mkdir data/train_tfrecords
-mkdir data/test_tfrecords
+mkdir data/val_tfrecords
