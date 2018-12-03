@@ -2,7 +2,6 @@ import tensorflow as tf
 
 tf.enable_eager_execution()
 
-
 def _parse_function(example_proto):
     # Create a dictionary of features.
 
@@ -23,8 +22,7 @@ if __name__ == '__main__':
 
     for record in dataset:
         output = _parse_function(record)
-        print(output['label'])
         image = tf.image.decode_jpeg(output['curr_img'])
-        print(image.shape)
         break
+
 

@@ -17,11 +17,11 @@ def write_image_value_pairs(file):
         writer = csv.DictWriter(f, fieldnames=fieldnames)
 
         for idx, speed in enumerate(speeds):
-            if idx % 2 == 0:
+            if idx <= 3:
                 continue
 
             curr_image_path = 'data/train_images/img{idx}.jpg'.format(idx=idx)
-            prev_image_path = 'data/train_images/img{idx}.jpg'.format(idx=idx - 1)
+            prev_image_path = 'data/train_images/img{idx}.jpg'.format(idx=idx - 4)
             writer.writerow({'prev_image_path': prev_image_path, 'curr_image_path': curr_image_path, 'speed': speed})
 
     print('done!')
@@ -46,7 +46,7 @@ def train_test_split(filename, split=10):
     for idx, line in enumerate(data):
         if count == split:
             count = 1
-            datafiles['test'].write(line + '\n')
+            datafiles['val'].write(line + '\n')
             continue
 
         datafiles['train'].write(line + '\n')

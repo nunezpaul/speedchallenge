@@ -1,6 +1,7 @@
 # https://github.com/tensorflow/tensorflow/issues/9675
 # https://github.com/Hvass-Labs/TensorFlow-Tutorials/blob/master/18_TFRecords_Dataset_API.ipynb
 
+import argparse
 import csv
 import os
 import sys
@@ -76,23 +77,15 @@ def convert_to_tfrecord(prev_img_paths, curr_img_paths, labels, out_path):
 
 
 if __name__ == '__main__':
-    num_shards = len(os.listdir('data/sharded_image_value_pairs'))
-    files = ['data/sharded_image_value_pairs/image_value_pairs_{}.csv'.format(i) for i in range(num_shards)]
+    parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
+    parser.add_argument('--input_filename', type=str, help='file to be converted into a tfrecord')
+    parser.add_argument('--output_filename', type=str, help='file location for tfrecord')
+    args = parser.parse_args()
 
-    for file in files:
-        out = 'data/train_tfrecords/{}'.format(file.split('/')[2].replace('.csv', '.tfrecord'))
-        with open(file) as f:
-            reader = csv.reader(f, delimiter=',')
-            data = [row for row in reader]
+    file, out = args.input_filename, args.output_filename
+    with open(file) as f:
+        reader = csv.reader(f, delimiter=',')
+        data = [row for row in reader]
 
-        prev_img_paths, curr_img_paths, labels = zip(*data)
-        convert_to_tfrecord(prev_img_paths, curr_img_paths, [float(label) for label in labels], out)
-
-    test_file = 'data/val_image_value_pairs.csv'
-    test_out = 'data/val_tfrecords/{}'.format(test_file.split('/')[1].replace('.csv', '.tfrecord'))
-    with open(test_file) as f:
-        test_reader = csv.reader(f, delimiter=',')
-        test_data = [row for row in test_reader]
-
-    test_prev_img_paths, test_curr_img_paths, test_labels = zip(*test_data)
-    convert_to_tfrecord(test_prev_img_paths, test_curr_img_paths, [float(label) for label in test_labels], test_out)
+    prev_img_paths, curr_img_paths, labels = zip(*data)
+    convert_to_tfrecord(prev_img_paths, curr_img_paths, [float(label) for label in labels], out)
