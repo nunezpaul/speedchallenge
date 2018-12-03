@@ -156,7 +156,7 @@ if __name__ == '__main__':
         model = train_model
 
     # Compile Model
-    sgd = k.optimizers.SGD(lr=1e-5, decay=0.0005, momentum=0.9)
+    sgd = k.optimizers.SGD(lr=1e-5, momentum=0.9)
     model.compile(optimizer=sgd,
                   loss='mean_squared_error',
                   target_tensors=[label],
