@@ -1,5 +1,7 @@
 # https://github.com/experiencor/speed-prediction/blob/master/Dashcam%20Speed%20-%20C3D.ipynb
 
+import argparse
+
 import keras as k
 import tensorflow as tf
 
@@ -158,6 +160,10 @@ def keras_basic_model(combined_image):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
+    parser.add_argument('--TPU', help='determine if to be trained on tpu', action="store_true")
+    args = parser.parse_args()
+
     train_dataset = load_training_data()
     train_iter = train_dataset.make_one_shot_iterator()
     val_dataset = load_validation_data()
@@ -169,12 +175,20 @@ if __name__ == '__main__':
     img = tf.reshape(img, (-1, 200, 200, 6))
     train_model = keras_basic_model(img)
 
+    if args.TPU:
+        model = tf.contrib.tpu.keras_to_tpu_model(
+            train_model,
+            strategy=tf.contrib.tpu.TPUDistributionStrategy(
+                tf.contrib.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])))
+    else:
+        model = train_model
+
     # Compile Model
-    train_model.compile(optimizer=k.optimizers.adam(),
-                        loss='mean_squared_error',
-                        target_tensors=[label],
-                        )
+    model.compile(optimizer=k.optimizers.adam(),
+                  loss='mean_squared_error',
+                  target_tensors=[label],
+                  )
 
     # Let's learn!
-    train_model.fit(epochs=1, steps_per_epoch=8096)
-    train_model.save('4_img_skip_model.h5')
+    model.fit(epochs=1, steps_per_epoch=8096)
+    model.save('4_img_skip_model.h5')
