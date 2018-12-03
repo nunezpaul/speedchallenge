@@ -56,4 +56,5 @@ def _parse_val_function(example_proto):
 if __name__ == '__main__':
     model = k.models.load_model('4_img_skip_model.h5')
     val_x, val_y = load_validation_data()
-    model.evaluate(val_x, val_y)
+    loss, acc = model.evaluate(val_x, val_y)
+    print(loss, acc)
