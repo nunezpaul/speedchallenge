@@ -45,8 +45,8 @@ def _parse_training_function(example_proto):
     # Randomly crop the images within a limit
     crop_x = tf.random_uniform((), 100, 340, dtype=tf.int32)
     crop_y = tf.random_uniform((), 100, 180, dtype=tf.int32)
-    crop_width = 200
-    crop_height = 200
+    crop_width = 112
+    crop_height = 112
     crop_window = [crop_y, crop_x, crop_height, crop_width]
 
     prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
@@ -58,11 +58,11 @@ def _parse_training_function(example_proto):
     combined_img = tf.image.random_brightness([prev_img, curr_img], max_delta=0.5)  # augment brightness
     combined_img = (tf.to_float(combined_img) - 225 / 2) / 255  # normalization step
     prev_img, curr_img = combined_img[0, :], combined_img[1, :]
-    concated_img = tf.concat([prev_img, curr_img], 2)
-
+    stacked_img = tf.stack([prev_img, curr_img])
+    print(stacked_img)
     label = output['label']
 
-    return concated_img, label
+    return stacked_img, label
 
 
 def _parse_val_function(example_proto):
@@ -77,10 +77,10 @@ def _parse_val_function(example_proto):
     output = tf.parse_single_example(example_proto, feature)
 
     # Randomly crop the images within a limit
-    crop_x = 200
-    crop_y = 150
-    crop_width = 200
-    crop_height = 200
+    crop_x = 200 + (200 - 112)
+    crop_y = 150 + (200 - 112)
+    crop_width = 112
+    crop_height = 112
     crop_window = [crop_y, crop_x, crop_height, crop_width]
 
     prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
@@ -91,73 +91,48 @@ def _parse_val_function(example_proto):
     curr_img = (tf.to_float(curr_img) - 225 / 2) / 255
 
     # Combine the two images
-    concated_img = tf.concat([prev_img, curr_img], 2)
+    concated_img = tf.stack([prev_img, curr_img], 2)
 
     return concated_img, output['label']
 
 
-def basic_model(combined_img):
-    # Three convolutional layers.
-    print(combined_img)
-    conv_1 = tf.layers.conv2d(combined_img,
-                              filters=64,
-                              kernel_size=3,
-                              strides=2,
-                              activation=tf.nn.relu,
-                              name='conv_1')
-    conv_2 = tf.layers.conv2d(conv_1,
-                              filters=64,
-                              kernel_size=3,
-                              strides=2,
-                              activation=tf.nn.relu,
-                              name='conv_2')
-    conv_3 = tf.layers.conv2d(conv_2,
-                              filters=64,
-                              kernel_size=3,
-                              strides=2,
-                              activation=tf.nn.relu,
-                              name='conv_3')
-
-    # Four fully-connected layers.
-    flat = tf.layers.flatten(conv_3)
-    fc_4 = tf.layers.dense(flat, 4096, activation=tf.nn.relu, name='fc_4')
-    fc_5 = tf.layers.dense(fc_4, 4096, activation=tf.nn.relu, name='fc_5')
-    fc_6 = tf.layers.dense(fc_5, 4096, activation=tf.nn.relu, name='fc_6')
-    fc_7 = tf.layers.dense(fc_6, 1, name='fc_7')
-
-    train_model = k.models.Model(inputs=combined_img, outputs=fc_7)
-
-    return fc_7
-
-
-def keras_basic_model(combined_image):
+def keras_model(combined_image):
+    print(combined_image.shape)
     model_input = k.layers.Input(tensor=combined_image)
-    conv1 = k.layers.Conv2D(filters=64,
-                            kernel_size=3,
-                            strides=2,
-                            activation=tf.nn.relu,
-                            name='conv_1')(model_input)
-    conv2 = k.layers.Conv2D(filters=64,
-                            kernel_size=3,
-                            strides=2,
-                            activation=tf.nn.relu,
-                            name='conv_2')(conv1)
-    conv3 = k.layers.Conv2D(filters=64,
-                            kernel_size=3,
-                            strides=2,
-                            activation=tf.nn.relu,
-                            name='conv_3')(conv2)
-    flat = k.layers.Flatten()(conv3)
-    fully_connected1 = k.layers.Dense(4096, activation=tf.nn.relu, name='fc_4')(flat)
-    fully_connected2 = k.layers.Dense(4096, activation=tf.nn.relu, name='fc_5')(fully_connected1)
-    fully_connected3 = k.layers.Dense(4096, activation=tf.nn.relu, name='fc_6')(fully_connected2)
-    model_output = k.layers.Dense(1)(fully_connected3)
+    conv1 = k.layers.Conv3D(64, (3, 3, 3),  activation='relu', padding='same', name='conv1')(model_input)
+    conv1_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid', name='pool1')(conv1)
 
-    train_model = k.models.Model(inputs=model_input, outputs=model_output)
+    conv2 = k.layers.Conv3D(128, (3, 3, 3), activation='relu', padding='same', name='conv2')(conv1_mp)
+    conv2_mp = k.layers.MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), padding='valid', name='pool2')(conv2)
 
-    print(train_model.summary())
+    conv3a = k.layers.Conv3D(256, (3, 3, 3), activation='relu', padding='same', name='conv3a')(conv2_mp)
+    conv3b = k.layers.Conv3D(256, (3, 3, 3), activation='relu', padding='same', name='conv3b')(conv3a)
+    conv3_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool3')(conv3b)
 
-    return train_model
+    conv4 = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv4a')(conv3_mp)
+    conv4b = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv4b')(conv4)
+    conv4_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool4')(conv4b)
+
+    conv5a = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv5a')(conv4_mp)
+    conv5b = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv5b')(conv5a)
+    conv5_pad = k.layers.ZeroPadding3D(padding=((0, 0), (0, 1), (0, 1)), name='zeropad5')(conv5b)
+    conv5_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool5')(conv5_pad)
+
+    flat = k.layers.Flatten()(conv5_mp)
+
+    fc6 = k.layers.Dense(4096, activation='relu', name='fc6')(flat)
+    fc6_dropout = k.layers.Dropout(.5)(fc6)
+    fc7 = k.layers.Dense(4096, activation='relu', name='fc7')(fc6_dropout)
+    fc7_dropout = k.layers.Dropout(.5)(fc7)
+
+    speed = k.layers.Dense(1, activation='linear')(fc7_dropout)
+
+    model = k.models.Model(inputs=model_input, outputs=speed)
+
+    print(model.summary())
+
+    return model
+
 
 
 if __name__ == '__main__':
@@ -169,8 +144,9 @@ if __name__ == '__main__':
     train_iter = train_dataset.make_one_shot_iterator()
 
     img, label = train_iter.get_next()
-    img = tf.reshape(img, (-1, 200, 200, 6))
-    train_model = keras_basic_model(img)
+    img = tf.reshape(img, (-1, 2, 112, 112, 3))
+
+    train_model = keras_model(img)
 
     if args.tpu:
         model = tf.contrib.tpu.keras_to_tpu_model(
