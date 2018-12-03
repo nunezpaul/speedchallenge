@@ -16,8 +16,8 @@ def load_training_data(batch_size=64):
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_training_function)
     dataset = dataset.repeat().batch(batch_size)
-    dataset = dataset.shuffle(batch_size * 5)
-    dataset = dataset.prefetch(batch_size * 5)
+    dataset = dataset.shuffle(batch_size * 2)
+    dataset = dataset.prefetch(batch_size * 2)
     # iterator = dataset.make_initializable_iterator()
 
     return dataset
