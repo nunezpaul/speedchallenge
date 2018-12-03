@@ -15,7 +15,7 @@ def load_training_data():
     filenames = [data_path.format(i) for i in range(10)]
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_training_function)
-    dataset = dataset.repeat().batch(16)
+    dataset = dataset.repeat().batch(32)
     dataset = dataset.shuffle(32)
     dataset = dataset.prefetch(100)
     # iterator = dataset.make_initializable_iterator()
@@ -25,7 +25,7 @@ def load_training_data():
 def load_validation_data():
     data_path = 'data/val_tfrecords/val_image_value_pairs.tfrecord'
     dataset = tf.data.TFRecordDataset([data_path])
-    dataset = dataset.map(_parse_training_function)
+    dataset = dataset.map(_parse_val_function)
     dataset = dataset.repeat().batch(16)
 
     return dataset
@@ -167,11 +167,7 @@ if __name__ == '__main__':
 
     train_dataset = load_training_data()
     train_iter = train_dataset.make_one_shot_iterator()
-    val_dataset = load_validation_data()
-    val_iter = val_dataset.make_one_shot_iterator()
 
-    sess = tf.Session()
-    sess.run([tf.global_variables_initializer()])
     img, label = train_iter.get_next()
     img = tf.reshape(img, (-1, 200, 200, 6))
     train_model = keras_basic_model(img)
@@ -191,5 +187,8 @@ if __name__ == '__main__':
                   )
 
     # Let's learn!
-    model.fit(epochs=1, steps_per_epoch=8096)
-    model.save('4_img_skip_model.h5')
+    for i in range(20):
+        model.fit(epochs=1, steps_per_epoch=8096)
+        model.save('4_img_skip_model_{}.h5'.format(i))
+        train_iter = train_dataset.make_one_shot_iterator()
+        img, label = train_iter.get_next()
