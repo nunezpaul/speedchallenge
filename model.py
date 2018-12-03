@@ -176,7 +176,7 @@ if __name__ == '__main__':
     img = tf.reshape(img, (-1, 200, 200, 6))
     train_model = keras_basic_model(img)
 
-    if args.TPU:
+    if args.tpu:
         model = tf.contrib.tpu.keras_to_tpu_model(
             train_model,
             strategy=tf.contrib.tpu.TPUDistributionStrategy(
