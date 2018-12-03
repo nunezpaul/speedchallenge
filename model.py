@@ -1,6 +1,7 @@
 # https://github.com/experiencor/speed-prediction/blob/master/Dashcam%20Speed%20-%20C3D.ipynb
 
 import argparse
+import os
 
 import keras as k
 import tensorflow as tf
@@ -161,7 +162,7 @@ def keras_basic_model(combined_image):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
-    parser.add_argument('--TPU', help='determine if to be trained on tpu', action="store_true")
+    parser.add_argument('--tpu', help='determine if to be trained on tpu', action="store_true")
     args = parser.parse_args()
 
     train_dataset = load_training_data()
