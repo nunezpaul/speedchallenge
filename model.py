@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     # Let's learn!
     for i in range(20):
-        model.fit(lr=0.01, epochs=1, steps_per_epoch=8096)
+        model.fit(epochs=1, steps_per_epoch=8096)
         model.save('4_img_skip_model_{}.h5'.format(i))
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
