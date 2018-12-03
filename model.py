@@ -10,14 +10,14 @@ import tensorflow as tf
 # tf.enable_eager_execution()
 
 
-def load_training_data():
+def load_training_data(batch_size=64):
     data_path = 'data/train_tfrecords/image_value_pairs_{}.tfrecord'
     filenames = [data_path.format(i) for i in range(10)]
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_training_function)
-    dataset = dataset.repeat().batch(32)
-    dataset = dataset.shuffle(32)
-    dataset = dataset.prefetch(100)
+    dataset = dataset.repeat().batch(batch_size)
+    dataset = dataset.shuffle(batch_size * 5)
+    dataset = dataset.prefetch(batch_size * 5)
     # iterator = dataset.make_initializable_iterator()
 
     return dataset
