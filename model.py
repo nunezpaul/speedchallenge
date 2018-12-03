@@ -1,7 +1,5 @@
 # https://github.com/experiencor/speed-prediction/blob/master/Dashcam%20Speed%20-%20C3D.ipynb
 
-from keras.layers import Conv2D
-import cv2
 import keras as k
 import tensorflow as tf
 
@@ -15,8 +13,8 @@ def load_training_data():
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_training_function)
     dataset = dataset.repeat().batch(16)
-    # dataset = dataset.shuffle(32)
-    # dataset = dataset.prefetch(100)
+    dataset = dataset.shuffle(32)
+    dataset = dataset.prefetch(100)
     # iterator = dataset.make_initializable_iterator()
 
     return dataset
