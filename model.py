@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import h5py
 
 import keras as k
 import tensorflow as tf
@@ -118,7 +119,7 @@ def keras_model(combined_image):
     conv5_pad = k.layers.ZeroPadding3D(padding=((0, 0), (0, 1), (0, 1)), name='zeropad5')(conv5b)
     conv5_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool5')(conv5_pad)
 
-    flat = k.layers.Flatten()(conv5_mp)
+    flat = k.layers.Flatten()(conv2_mp)
 
     fc6 = k.layers.Dense(4096, activation='relu', name='fc6')(flat)
     fc6_dropout = k.layers.Dropout(.5)(fc6)
@@ -128,8 +129,6 @@ def keras_model(combined_image):
     speed = k.layers.Dense(1, activation='linear')(fc7_dropout)
 
     model = k.models.Model(inputs=model_input, outputs=speed)
-
-    print(model.summary())
 
     return model
 
