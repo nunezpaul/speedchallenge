@@ -133,7 +133,6 @@ def keras_model(combined_image):
     return model
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
     parser.add_argument('--tpu', help='determine if to be trained on tpu', action="store_true")
