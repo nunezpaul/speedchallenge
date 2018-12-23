@@ -99,7 +99,9 @@ def _parse_val_function(example_proto):
 def keras_model(combined_image):
     print(combined_image.shape)
     model_input = k.layers.Input(tensor=combined_image)
-    conv1 = k.layers.Conv3D(64, (3, 3, 3),  activation='relu', padding='same', name='conv1')(model_input)
+    conv1 = k.layers.Conv3D(64, (3, 3, 3), padding='same', name='conv1')(model_input)
+    conv1 = k.layers.BatchNormalization()(conv1)
+    conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv1)
     conv1_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid', name='pool1')(conv1)
 
     conv2 = k.layers.Conv3D(128, (3, 3, 3), activation='relu', padding='same', name='conv2')(conv1_mp)
@@ -168,7 +170,8 @@ if __name__ == '__main__':
     elif args.opt == 'adam':
         opt = k.optimizers.adam(lr=args.lr)
     else:
-        KeyError
+        print('Need to specify your optimizer.')
+        exit()
     model.compile(optimizer=opt,
                   loss='mean_squared_error',
                   target_tensors=[label],
