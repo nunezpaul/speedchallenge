@@ -125,12 +125,18 @@ def keras_model(combined_image):
     fc7 = k.layers.Dense(4096, activation='relu', name='fc7')(fc6_dropout)
     fc7_dropout = k.layers.Dropout(.5)(fc7)
 
-    speed = k.layers.Dense(1, activation='linear')(fc7_dropout)
+    diff_speed = k.layers.Dense(1, activation='linear')(fc7_dropout)
+    speed = k.layers.Lambda(lambda diff_speed: diff_speed + k.backend.ones_like(diff_speed) * 12)(diff_speed)
 
     model = k.models.Model(inputs=model_input, outputs=speed)
     print(model.summary())
 
     return model
+
+
+def add_average(diff_speed, avg_speed=12):
+    output = k.layers.add([diff_speed, k.backend.ones_like(diff_speed) * avg_speed])
+    return output
 
 
 if __name__ == '__main__':
