@@ -142,6 +142,7 @@ def add_average(diff_speed, avg_speed=12):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
     parser.add_argument('--tpu', help='determine if to be trained on tpu', action="store_true")
+    parser.add_argument('--opt', help='which optimizer to use', choices=['adam', 'sgd'])
     parser.add_argument('--lr', help='set the learning rate', type=float, default=1e-3)
     args = parser.parse_args()
 
@@ -162,8 +163,13 @@ if __name__ == '__main__':
         model = train_model
 
     # Compile Model
-    sgd = k.optimizers.SGD(lr=args.lr, momentum=0.9)
-    model.compile(optimizer=sgd,
+    if args.opt == 'sgd':
+        opt = k.optimizers.SGD(lr=args.lr, momentum=0.9)
+    elif args.opt == 'adam':
+        opt = k.optimizers.adam(lr=args.lr)
+    else:
+        KeyError
+    model.compile(optimizer=opt,
                   loss='mean_squared_error',
                   target_tensors=[label],
                   )
