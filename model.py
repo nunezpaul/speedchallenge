@@ -104,19 +104,37 @@ def keras_model(combined_image):
     conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv1)
     conv1_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid', name='pool1')(conv1)
 
-    conv2 = k.layers.Conv3D(128, (3, 3, 3), activation='relu', padding='same', name='conv2')(conv1_mp)
+    conv2 = k.layers.Conv3D(128, (3, 3, 3), padding='same', name='conv2')(conv1_mp)
+    conv2 = k.layers.BatchNormalization()(conv2)
+    conv2 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv2)
     conv2_mp = k.layers.MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), padding='valid', name='pool2')(conv2)
 
-    conv3a = k.layers.Conv3D(256, (3, 3, 3), activation='relu', padding='same', name='conv3a')(conv2_mp)
-    conv3b = k.layers.Conv3D(256, (3, 3, 3), activation='relu', padding='same', name='conv3b')(conv3a)
+    conv3a = k.layers.Conv3D(256, (3, 3, 3), padding='same', name='conv3a')(conv2_mp)
+    conv3a = k.layers.BatchNormalization()(conv3a)
+    conv3a = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv3a)
+
+    conv3b = k.layers.Conv3D(256, (3, 3, 3), padding='same', name='conv3b')(conv3a)
+    conv3b = k.layers.BatchNormalization()(conv3b)
+    conv3b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv3b)
     conv3_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool3')(conv3b)
 
-    conv4 = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv4a')(conv3_mp)
-    conv4b = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv4b')(conv4)
+    conv4 = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv4a')(conv3_mp)
+    conv4 = k.layers.BatchNormalization()(conv4)
+    conv4 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv4)
+
+    conv4b = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv4b')(conv4)
+    conv4b = k.layers.BatchNormalization()(conv4b)
+    conv4b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv4b)
     conv4_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool4')(conv4b)
 
-    conv5a = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv5a')(conv4_mp)
-    conv5b = k.layers.Conv3D(512, (3, 3, 3), activation='relu', padding='same', name='conv5b')(conv5a)
+    conv5a = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv5a')(conv4_mp)
+    conv5a = k.layers.BatchNormalization()(conv5a)
+    conv5a = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv5a)
+
+    conv5b = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv5b')(conv5a)
+    conv5b = k.layers.BatchNormalization()(conv5b)
+    conv5b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv5b)
+
     conv5_pad = k.layers.ZeroPadding3D(padding=((0, 0), (0, 1), (0, 1)), name='zeropad5')(conv5b)
     conv5_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool5')(conv5_pad)
 
