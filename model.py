@@ -59,10 +59,13 @@ def _parse_training_function(example_proto):
     combined_img = (tf.to_float(combined_img) - 225 / 2) / 255  # normalization step
     prev_img, curr_img = combined_img[0, :], combined_img[1, :]
     stacked_img = tf.stack([prev_img, curr_img])
-    print(stacked_img)
-    label = output['label']
 
-    return stacked_img, label
+    label = output['label']
+    print(label)
+    cat_label = tf.to_int32(label)
+    print(cat_label)
+
+    return stacked_img, cat_label
 
 
 def _parse_val_function(example_proto):
@@ -142,21 +145,16 @@ def keras_model(combined_image):
 
     fc6 = k.layers.Dense(4096, activation='relu', name='fc6')(flat)
     fc6_dropout = k.layers.Dropout(.5)(fc6)
+
     fc7 = k.layers.Dense(4096, activation='relu', name='fc7')(fc6_dropout)
     fc7_dropout = k.layers.Dropout(.5)(fc7)
 
-    diff_speed = k.layers.Dense(1, activation='linear')(fc7_dropout)
-    speed = k.layers.Lambda(lambda diff_speed: diff_speed + k.backend.ones_like(diff_speed) * 12)(diff_speed)
+    speed_prob = k.layers.Dense(30, activation='softmax')(fc7_dropout)
 
-    model = k.models.Model(inputs=model_input, outputs=speed)
+    model = k.models.Model(inputs=model_input, outputs=speed_prob)
     print(model.summary())
 
     return model
-
-
-def add_average(diff_speed, avg_speed=12):
-    output = k.layers.add([diff_speed, k.backend.ones_like(diff_speed) * avg_speed])
-    return output
 
 
 if __name__ == '__main__':
@@ -190,8 +188,9 @@ if __name__ == '__main__':
     else:
         print('Need to specify your optimizer.')
         exit()
+    print(label)
     model.compile(optimizer=opt,
-                  loss='mean_squared_error',
+                  loss='sparse_categorical_crossentropy',
                   target_tensors=[label],
                   )
 
