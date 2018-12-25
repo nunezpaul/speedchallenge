@@ -46,8 +46,8 @@ def _parse_training_function(example_proto):
     # Randomly crop the images within a limit
     crop_x = tf.random_uniform((), 100, 340, dtype=tf.int32)
     crop_y = tf.random_uniform((), 100, 180, dtype=tf.int32)
-    crop_width = 112
-    crop_height = 112
+    crop_width = 150
+    crop_height = 150
     crop_window = [crop_y, crop_x, crop_height, crop_width]
 
     prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
@@ -101,46 +101,51 @@ def _parse_val_function(example_proto):
 def keras_model(combined_image):
     print(combined_image.shape)
     model_input = k.layers.Input(tensor=combined_image)
-    conv1 = k.layers.Conv3D(64, (3, 3, 3), padding='same', name='conv1')(model_input)
+    conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
+    conv1 = k.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
     conv1 = k.layers.BatchNormalization()(conv1)
     conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv1)
-    conv1_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid', name='pool1')(conv1)
 
-    conv2 = k.layers.Conv3D(128, (3, 3, 3), padding='same', name='conv2')(conv1_mp)
+    conv2 = k.layers.ZeroPadding2D((2, 2))(conv1)
+    conv2 = k.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
     conv2 = k.layers.BatchNormalization()(conv2)
     conv2 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv2)
-    conv2_mp = k.layers.MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), padding='valid', name='pool2')(conv2)
 
-    conv3a = k.layers.Conv3D(256, (3, 3, 3), padding='same', name='conv3a')(conv2_mp)
+    conv3a = k.layers.ZeroPadding2D((2, 2))(conv2)
+    conv3a = k.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
     conv3a = k.layers.BatchNormalization()(conv3a)
     conv3a = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv3a)
 
-    conv3b = k.layers.Conv3D(256, (3, 3, 3), padding='same', name='conv3b')(conv3a)
+    conv3b = k.layers.ZeroPadding2D()(conv3a)
+    conv3b = k.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
     conv3b = k.layers.BatchNormalization()(conv3b)
     conv3b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv3b)
-    conv3_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool3')(conv3b)
 
-    conv4 = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv4a')(conv3_mp)
+    conv4 = k.layers.ZeroPadding2D()(conv3b)
+    conv4 = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
     conv4 = k.layers.BatchNormalization()(conv4)
     conv4 = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv4)
 
-    conv4b = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv4b')(conv4)
+    conv4b = k.layers.ZeroPadding2D()(conv4)
+    conv4b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
     conv4b = k.layers.BatchNormalization()(conv4b)
     conv4b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv4b)
-    conv4_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool4')(conv4b)
 
-    conv5a = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv5a')(conv4_mp)
+    conv5a = k.layers.ZeroPadding2D()(conv4b)
+    conv5a = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
     conv5a = k.layers.BatchNormalization()(conv5a)
     conv5a = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv5a)
 
-    conv5b = k.layers.Conv3D(512, (3, 3, 3), padding='same', name='conv5b')(conv5a)
+    conv5b = k.layers.ZeroPadding2D()(conv5a)
+    conv5b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
     conv5b = k.layers.BatchNormalization()(conv5b)
     conv5b = k.layers.Lambda(lambda x: k.layers.activations.relu(x))(conv5b)
 
-    conv5_pad = k.layers.ZeroPadding3D(padding=((0, 0), (0, 1), (0, 1)), name='zeropad5')(conv5b)
-    conv5_mp = k.layers.MaxPooling3D(pool_size=(1, 2, 2), strides=(2, 2, 2), padding='valid', name='pool5')(conv5_pad)
+    conv6 = k.layers.ZeroPadding2D()(conv5b)
+    conv6 = k.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
+    conv6 = k.layers.BatchNormalization()(conv6)
 
-    flat = k.layers.Flatten()(conv5_mp)
+    flat = k.layers.Flatten()(conv6)
 
     fc6 = k.layers.Dense(4096, activation='relu', name='fc6')(flat)
     fc6_dropout = k.layers.Dropout(.5)(fc6)
@@ -168,7 +173,7 @@ if __name__ == '__main__':
 
     img, label = train_iter.get_next()
     print(img.shape)
-    img = tf.reshape(img, (-1, 112, 112, 6))
+    img = tf.reshape(img, (-1, 150, 150, 6))
 
     train_model = keras_model(img)
 
