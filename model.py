@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import uuid
 
 import keras as k
 import tensorflow as tf
@@ -149,7 +150,7 @@ def keras_model(combined_image):
     fc7 = k.layers.Dense(4096, activation='relu', name='fc7')(fc6_dropout)
     fc7_dropout = k.layers.Dropout(.5)(fc7)
 
-    speed_prob = k.layers.Dense(30, activation='softmax')(fc7_dropout)
+    speed_prob = k.layers.Dense(10, activation='softmax')(fc7_dropout)
 
     model = k.models.Model(inputs=model_input, outputs=speed_prob)
     print(model.summary())
@@ -189,9 +190,12 @@ if __name__ == '__main__':
         print('Need to specify your optimizer.')
         exit()
     print(label)
+    uuid = uuid.uuid4()
+    callbacks = k.callbacks.TensorBoard(log_dir=f'./log/{uuid}', histogram_freq=0, write_graph=True, write_images=True)
     model.compile(optimizer=opt,
                   loss='sparse_categorical_crossentropy',
                   target_tensors=[label],
+                  metrics=['categorical_accuracy']
                   )
 
     # Let's learn!
