@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     img, label = train_iter.get_next()
     print(img.shape)
-    img = tf.reshape(img, (-1, 2, 112, 112, 3))
+    img = tf.reshape(img, (-1, 112, 112, 6))
 
     train_model = keras_model(img)
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
     # Let's learn!
     for i in range(20):
-        model.fit(epochs=1, steps_per_epoch=8096)
+        model.fit(epochs=1, steps_per_epoch=20000//64)
         model.save('4_img_skip_model_{}.h5'.format(i))
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
