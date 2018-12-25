@@ -23,6 +23,7 @@ def load_training_data(batch_size=64):
 
     return dataset
 
+
 def load_validation_data():
     data_path = 'data/val_tfrecords/val_image_value_pairs.tfrecord'
     dataset = tf.data.TFRecordDataset([data_path])
@@ -44,22 +45,20 @@ def _parse_training_function(example_proto):
     output = tf.parse_single_example(example_proto, feature)
 
     # Randomly crop the images within a limit
-    crop_x = tf.random_uniform((), 100, 340, dtype=tf.int32)
-    crop_y = tf.random_uniform((), 100, 180, dtype=tf.int32)
-    crop_width = 150
-    crop_height = 150
+    crop_x = 0
+    crop_y = tf.random_uniform((), 0, 50, dtype=tf.int32)
+    crop_width = 640
+    crop_height = 300
     crop_window = [crop_y, crop_x, crop_height, crop_width]
 
     prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
     curr_img = tf.image.decode_and_crop_jpeg(output['curr_img'], crop_window)
-
-    random_rotation = tf.random_uniform((), 0, 4, dtype=tf.int32)
-
-    prev_img, curr_img = tf.image.rot90(prev_img, random_rotation), tf.image.rot90(curr_img, random_rotation)
-    combined_img = tf.image.random_brightness([prev_img, curr_img], max_delta=0.5)  # augment brightness
-    combined_img = (tf.to_float(combined_img) - 225 / 2) / 255  # normalization step
-    prev_img, curr_img = combined_img[0, :], combined_img[1, :]
     stacked_img = tf.concat([prev_img, curr_img], axis=-1)
+
+    stacked_img = tf.image.random_flip_left_right(stacked_img)
+    stacked_img = tf.image.random_flip_up_down(stacked_img)
+    stacked_img = tf.image.random_brightness(stacked_img, max_delta=0.5)  # augment brightness
+    stacked_img = (tf.to_float(stacked_img) - 225 / 2)  # normalization step
 
     label = output['label']
     cat_label = tf.to_int32(label)
@@ -173,7 +172,7 @@ if __name__ == '__main__':
 
     img, label = train_iter.get_next()
     print(img.shape)
-    img = tf.reshape(img, (-1, 150, 150, 6))
+    img = tf.reshape(img, (-1, 300, 640, 6))
 
     train_model = keras_model(img)
 
