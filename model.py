@@ -17,7 +17,7 @@ def load_training_data(batch_size=64):
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_training_function)
     dataset = dataset.repeat().batch(batch_size)
-    dataset = dataset.shuffle(batch_size * 2)
+    # dataset = dataset.shuffle(batch_size)
     dataset = dataset.prefetch(batch_size * 2)
     # iterator = dataset.make_initializable_iterator()
 
@@ -59,12 +59,10 @@ def _parse_training_function(example_proto):
     combined_img = tf.image.random_brightness([prev_img, curr_img], max_delta=0.5)  # augment brightness
     combined_img = (tf.to_float(combined_img) - 225 / 2) / 255  # normalization step
     prev_img, curr_img = combined_img[0, :], combined_img[1, :]
-    stacked_img = tf.stack([prev_img, curr_img])
+    stacked_img = tf.concat([prev_img, curr_img], axis=-1)
 
     label = output['label']
-    print(label)
     cat_label = tf.to_int32(label)
-    print(cat_label)
 
     return stacked_img, cat_label
 
@@ -169,6 +167,7 @@ if __name__ == '__main__':
     train_iter = train_dataset.make_one_shot_iterator()
 
     img, label = train_iter.get_next()
+    print(img.shape)
     img = tf.reshape(img, (-1, 2, 112, 112, 3))
 
     train_model = keras_model(img)
@@ -188,7 +187,7 @@ if __name__ == '__main__':
         opt = k.optimizers.adam(lr=args.lr)
     else:
         print('Need to specify your optimizer.')
-        exit()
+        opt = k.optimizers.adam(lr=args.lr)
     print(label)
     uuid = uuid.uuid4()
     callbacks = k.callbacks.TensorBoard(log_dir=f'./log/{uuid}', histogram_freq=0, write_graph=True, write_images=True)
