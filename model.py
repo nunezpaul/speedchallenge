@@ -57,8 +57,8 @@ def _parse_training_function(example_proto):
 
     stacked_img = tf.image.random_flip_left_right(stacked_img)
     stacked_img = tf.image.random_flip_up_down(stacked_img)
-    stacked_img = tf.image.random_brightness(stacked_img, max_delta=0.5)  # augment brightness
-    stacked_img = (tf.to_float(stacked_img) - 225 / 2)  # normalization step
+    # stacked_img = tf.image.random_brightness(stacked_img, max_delta=0.5)  # augment brightness
+    stacked_img = (tf.to_float(stacked_img) - 225 / 2) / 255.  # normalization step
 
     label = output['label']
     cat_label = tf.to_int32(label)
@@ -161,6 +161,15 @@ def keras_model(combined_image):
     return model
 
 
+def MSE_metric(y_true, y_pred, bucket_size=3):
+    y_true_fp = (tf.to_float(y_true) + 0.5) * bucket_size
+    y_pred_fp = (tf.to_float(y_pred) + 0.5) * bucket_size
+
+    return tf.reduce_mean(tf.square(y_true_fp - y_pred_fp))
+
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
     parser.add_argument('--tpu', help='determine if to be trained on tpu', action="store_true")
@@ -199,7 +208,7 @@ if __name__ == '__main__':
     model.compile(optimizer=opt,
                   loss='sparse_categorical_crossentropy',
                   target_tensors=[label],
-                  metrics=['categorical_accuracy']
+                  metrics=['categorical_accuracy', MSE_metric]
                   )
 
     # Let's learn!
