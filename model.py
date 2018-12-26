@@ -162,6 +162,7 @@ def keras_model(combined_image):
 
 
 def MSE_metric(y_true, y_pred, bucket_size=3):
+    y_pred = tf.argmax(y_pred)
     y_true_fp = (tf.to_float(y_true) + 0.5) * bucket_size
     y_pred_fp = (tf.to_float(y_pred) + 0.5) * bucket_size
 
