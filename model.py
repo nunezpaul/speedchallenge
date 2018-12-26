@@ -11,7 +11,7 @@ import tensorflow as tf
 # tf.enable_eager_execution()
 
 
-def load_training_data(batch_size=64):
+def load_training_data(batch_size=32):
     data_path = 'data/train_tfrecords/image_value_pairs_{}.tfrecord'
     filenames = [data_path.format(i) for i in range(10)]
     dataset = tf.data.TFRecordDataset(filenames)
@@ -214,7 +214,7 @@ if __name__ == '__main__':
 
     # Let's learn!
     for i in range(20):
-        model.fit(epochs=1, steps_per_epoch=20000//64)
+        model.fit(epochs=1, steps_per_epoch=20000//32)
         model.save('4_img_skip_model_{}.h5'.format(i))
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
