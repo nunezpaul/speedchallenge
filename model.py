@@ -179,7 +179,7 @@ if __name__ == '__main__':
 
     if args.tpu:
         model = tf.contrib.tpu.keras_to_tpu_model(
-            train_model,
+            k.Model(img, train_model),
             strategy=tf.contrib.tpu.TPUDistributionStrategy(
                 tf.contrib.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])))
     else:
@@ -187,7 +187,7 @@ if __name__ == '__main__':
 
     # Compile Model
     if args.opt == 'sgd':
-        opt = k.optimizers.SGD(lr=args.lr, momentum=0.9)
+        opt = k.optimizers.SGD(lr=args.lr)#, momentum=0.9)
     elif args.opt == 'adam':
         opt = k.optimizers.adam(lr=args.lr)
     else:
