@@ -45,23 +45,37 @@ def _parse_training_function(example_proto):
     output = tf.parse_single_example(example_proto, feature)
 
     # Randomly crop the images within a limit
-    crop_x = 0
-    crop_y = tf.random_uniform((), 0, 50, dtype=tf.int32)
     crop_width = 640
     crop_height = 300
-    crop_window = [crop_y, crop_x, crop_height, crop_width]
+    num_channels = 6
 
-    prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
-    curr_img = tf.image.decode_and_crop_jpeg(output['curr_img'], crop_window)
+    # Grab each img then apply the same random crop
+    prev_img = tf.image.decode_jpeg(output['prev_img'])
+    curr_img = tf.image.decode_jpeg(output['curr_img'])
     stacked_img = tf.concat([prev_img, curr_img], axis=-1)
+    stacked_img = tf.image.random_crop(stacked_img, [crop_height, crop_width, num_channels])
 
-    stacked_img = tf.image.random_flip_left_right(stacked_img)
-    stacked_img = tf.image.random_flip_up_down(stacked_img)
-    # stacked_img = tf.image.random_brightness(stacked_img, max_delta=0.5)  # augment brightness
-    stacked_img = (tf.to_float(stacked_img) - 225 / 2) / 255.  # normalization step
+    # Split the data and restack them to apply the same random image processing
+    side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
+
+    # Data Augmentation Pipeline
+    side_by_side_img = tf.image.random_hue(side_by_side_img, max_delta=0.3)
+    side_by_side_img = tf.image.random_brightness(side_by_side_img, max_delta=0.3)
+    side_by_side_img = tf.image.random_contrast(side_by_side_img, 0.5, 1.5)
+    side_by_side_img = tf.image.random_saturation(side_by_side_img, 0.5, 1.5)
+    side_by_side_img = tf.image.random_jpeg_quality(side_by_side_img, 10, 100)
+    side_by_side_img = tf.image.random_flip_left_right(side_by_side_img)
+    side_by_side_img = tf.image.random_flip_up_down(side_by_side_img)
+
+    # Restack the imgs by their channel
+    stacked_img = tf.concat([side_by_side_img[:crop_height, :, :], side_by_side_img[crop_height:, :, :]], axis=-1)
+
+    # Normalize the img data and add random noise
+    stacked_img = (tf.to_float(stacked_img) - 225 / 2) / 255.
+    stacked_img = stacked_img + tf.random_normal(shape=[crop_height, crop_width, num_channels], stddev=0.5)
 
     label = output['label']
-    cat_label = tf.to_int32(label)
+    cat_label = tf.to_int64(label)
 
     return stacked_img, cat_label
 
@@ -78,23 +92,24 @@ def _parse_val_function(example_proto):
     output = tf.parse_single_example(example_proto, feature)
 
     # Randomly crop the images within a limit
-    crop_x = 200 + (200 - 112)
-    crop_y = 150 + (200 - 112)
-    crop_width = 112
-    crop_height = 112
+    crop_x = 0
+    crop_y = 50
+    crop_width = 640
+    crop_height = 300
     crop_window = [crop_y, crop_x, crop_height, crop_width]
 
+    # Crop the center images
     prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
     curr_img = tf.image.decode_and_crop_jpeg(output['curr_img'], crop_window)
 
-    # Normalize the data
-    prev_img = (tf.to_float(prev_img) - 225 / 2) / 255
-    curr_img = (tf.to_float(curr_img) - 225 / 2) / 255
+    # Stack the two images and normalize them
+    stacked_img = tf.concat([prev_img, curr_img], axis=-1)
+    stacked_img = (tf.to_float(stacked_img) - 225 / 2) / 255.
 
-    # Combine the two images
-    concated_img = tf.stack([prev_img, curr_img], 2)
+    label = output['label']
+    cat_label = tf.to_int64(label)
 
-    return concated_img, output['label']
+    return stacked_img, cat_label
 
 
 def keras_model(combined_image):
@@ -161,7 +176,7 @@ def keras_model(combined_image):
     return model
 
 
-def MSE_metric(y_true, y_pred, bucket_size=3):
+def mse_metric(y_true, y_pred, bucket_size=3):
     y_pred = tf.argmax(y_pred, -1)
     y_true_fp = (tf.to_float(y_true) + 0.5) * bucket_size
     y_pred_fp = (tf.to_float(y_pred) + 0.5) * bucket_size
@@ -169,6 +184,10 @@ def MSE_metric(y_true, y_pred, bucket_size=3):
     return tf.reduce_mean(tf.square(y_true_fp - y_pred_fp))
 
 
+def categorical_accuracy(y_true, y_pred):
+    y_pred = tf.argmax(y_pred, -1)
+    same_cat = tf.equal(y_true, y_pred)
+    return tf.reduce_mean(tf.to_float(same_cat))
 
 
 if __name__ == '__main__':
@@ -209,12 +228,12 @@ if __name__ == '__main__':
     model.compile(optimizer=opt,
                   loss='sparse_categorical_crossentropy',
                   target_tensors=[label],
-                  metrics=['categorical_accuracy', MSE_metric]
+                  metrics=[categorical_accuracy, mse_metric]
                   )
 
     # Let's learn!
     for i in range(20):
-        model.fit(epochs=1, steps_per_epoch=20000//32)
-        model.save('4_img_skip_model_{}.h5'.format(i))
+        model.fit(epochs=5, steps_per_epoch=20000//32)
+        model.save(f'speed_model_{args.opt}_{i}.h5')
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
