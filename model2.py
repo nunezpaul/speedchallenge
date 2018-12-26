@@ -118,7 +118,7 @@ def keras_model(model_input):
     fc7 = k.layers.Dense(4096, activation='relu', name='fc7')(fc6_dropout)
     fc7_dropout = k.layers.Dropout(.5)(fc7)
 
-    fc8 = k.layers.Dense(4096, activation='relu', name='fc7')(fc7_dropout)
+    fc8 = k.layers.Dense(4096, activation='relu', name='fc8')(fc7_dropout)
     fc8_dropout = k.layers.Dropout(.5)(fc8)
 
     speed_prob = k.layers.Dense(10, activation='softmax')(fc8_dropout)
