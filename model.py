@@ -158,7 +158,7 @@ def keras_model(combined_image):
     model = k.models.Model(inputs=model_input, outputs=speed_prob)
     print(model.summary())
 
-    return model
+    return model, model_input
 
 
 if __name__ == '__main__':
@@ -175,11 +175,11 @@ if __name__ == '__main__':
     print(img.shape)
     img = tf.reshape(img, (-1, 300, 640, 6))
 
-    train_model = keras_model(img)
+    train_model, model_input = keras_model(img)
 
     if args.tpu:
         model = tf.contrib.tpu.keras_to_tpu_model(
-            k.Model(img, train_model),
+            k.Model(model_input, train_model),
             strategy=tf.contrib.tpu.TPUDistributionStrategy(
                 tf.contrib.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])))
     else:
