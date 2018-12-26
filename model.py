@@ -97,9 +97,7 @@ def _parse_val_function(example_proto):
     return concated_img, output['label']
 
 
-def keras_model(combined_image):
-    print(combined_image.shape)
-    model_input = k.layers.Input(tensor=combined_image)
+def keras_model(model_input):
     conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
     conv1 = k.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
     conv1 = k.layers.BatchNormalization()(conv1)
@@ -158,7 +156,7 @@ def keras_model(combined_image):
     model = k.models.Model(inputs=model_input, outputs=speed_prob)
     print(model.summary())
 
-    return model, model_input
+    return model
 
 
 if __name__ == '__main__':
@@ -172,14 +170,15 @@ if __name__ == '__main__':
     train_iter = train_dataset.make_one_shot_iterator()
 
     img, label = train_iter.get_next()
-    print(img.shape)
     img = tf.reshape(img, (-1, 300, 640, 6))
 
-    train_model, model_input = keras_model(img)
+    print(img.shape)
+    model_input = k.layers.Input(tensor=img)
+    train_model = keras_model(model_input)
 
     if args.tpu:
         model = tf.contrib.tpu.keras_to_tpu_model(
-            k.Model(model_input, train_model),
+            k.Model(model_input, k.layers.Lambda(lambda x: train_model(x))(model_input)),
             strategy=tf.contrib.tpu.TPUDistributionStrategy(
                 tf.contrib.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])))
     else:
