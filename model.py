@@ -24,11 +24,11 @@ def load_training_data(batch_size=32):
     return dataset
 
 
-def load_validation_data():
+def load_validation_data(batch_size=32):
     data_path = 'data/val_tfrecords/val_image_value_pairs.tfrecord'
     dataset = tf.data.TFRecordDataset([data_path])
     dataset = dataset.map(_parse_val_function)
-    dataset = dataset.repeat().batch(16)
+    dataset = dataset.repeat().batch(batch_size)
 
     return dataset
 
@@ -190,6 +190,12 @@ def categorical_accuracy(y_true, y_pred):
     return tf.reduce_mean(tf.to_float(same_cat))
 
 
+def make_generator(dataset_iter):
+    while True:
+        inputs, labels = dataset_iter.get_next()
+        yield inputs, labels
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
     parser.add_argument('--tpu', help='determine if to be trained on tpu', action="store_true")
@@ -197,11 +203,16 @@ if __name__ == '__main__':
     parser.add_argument('--lr', help='set the learning rate', type=float, default=1e-3)
     args = parser.parse_args()
 
+    # Creating train data iterator
     train_dataset = load_training_data()
     train_iter = train_dataset.make_one_shot_iterator()
 
+    # Creating validation data iterator
+    valid_dataset = load_validation_data()
+    valid_iter = valid_dataset.make_one_shot_iterator()
+    X_valid, y_valid = valid_iter.get_next()
+
     img, label = train_iter.get_next()
-    print(img.shape)
     img = tf.reshape(img, (-1, 300, 640, 6))
 
     train_model = keras_model(img)
@@ -233,7 +244,7 @@ if __name__ == '__main__':
 
     # Let's learn!
     for i in range(20):
-        model.fit(epochs=5, steps_per_epoch=20000//32)
+        model.fit(train_iter, epochs=5, steps_per_epoch=20000//32, validation_data=[X_valid, y_valid], validation_steps=4)
         model.save(f'speed_model_{args.opt}_{i}.h5')
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
