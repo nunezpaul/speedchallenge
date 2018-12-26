@@ -59,10 +59,10 @@ def _parse_training_function(example_proto):
     side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
 
     # Data Augmentation Pipeline
-    side_by_side_img = tf.image.random_hue(side_by_side_img, max_delta=0.3)
+    side_by_side_img = tf.image.random_hue(side_by_side_img, max_delta=0.2)
     side_by_side_img = tf.image.random_brightness(side_by_side_img, max_delta=0.3)
-    side_by_side_img = tf.image.random_contrast(side_by_side_img, 0.5, 1.5)
-    side_by_side_img = tf.image.random_saturation(side_by_side_img, 0.5, 1.5)
+    side_by_side_img = tf.image.random_contrast(side_by_side_img, 0.8, 1.2)
+    side_by_side_img = tf.image.random_saturation(side_by_side_img, 0.8, 1.2)
     side_by_side_img = tf.image.random_jpeg_quality(side_by_side_img, 10, 100)
     side_by_side_img = tf.image.random_flip_left_right(side_by_side_img)
     side_by_side_img = tf.image.random_flip_up_down(side_by_side_img)
@@ -72,7 +72,7 @@ def _parse_training_function(example_proto):
 
     # Normalize the img data and add random noise
     stacked_img = (tf.to_float(stacked_img) - 225 / 2) / 255.
-    stacked_img = stacked_img + tf.random_normal(shape=[crop_height, crop_width, num_channels], stddev=0.5)
+    # stacked_img = stacked_img + tf.random_normal(shape=[crop_height, crop_width, num_channels], stddev=0.5)
 
     label = output['label']
     cat_label = tf.to_int64(label)
