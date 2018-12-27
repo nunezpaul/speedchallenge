@@ -58,12 +58,28 @@ def _parse_training_function(example_proto):
     # Split the data and restack them to apply the same random image processing
     side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
 
-    # Data Augmentation Pipeline
-    side_by_side_img = tf.image.random_hue(side_by_side_img, max_delta=0.2)
-    side_by_side_img = tf.image.random_brightness(side_by_side_img, max_delta=0.3)
-    side_by_side_img = tf.image.random_contrast(side_by_side_img, 0.8, 1.2)
-    side_by_side_img = tf.image.random_saturation(side_by_side_img, 0.8, 1.2)
-    side_by_side_img = tf.image.random_jpeg_quality(side_by_side_img, 10, 100)
+    # Defining all possible image augmentations
+    def aug_hue(img):
+        return tf.image.random_hue(img, max_delta=0.2)
+
+    def aug_brightness(img):
+        return tf.image.random_brightness(img, max_delta=0.3)
+
+    def aug_contrast(img):
+        return tf.image.random_contrast(img, 0.8, 1.2)
+
+    def aug_saturation(img):
+        return tf.image.random_saturation(img, 0.8, 1.2)
+
+    def aug_jpg_quality(img):
+        return tf.image.random_jpeg_quality(img, 10, 100)
+
+    # Selecting one of the above augmentations to apply to the images
+    random_aug_process = [aug_brightness, aug_contrast, aug_hue, aug_jpg_quality, aug_saturation]
+    random_aug_process_choice = tf.random_uniform(shape=(), minval=0, maxval=len(random_aug_process), dtype=tf.int64)
+    side_by_side_img = random_aug_process[random_aug_process_choice](side_by_side_img)
+
+    # Randomly flip the images vertically or horizontally
     side_by_side_img = tf.image.random_flip_left_right(side_by_side_img)
     side_by_side_img = tf.image.random_flip_up_down(side_by_side_img)
 

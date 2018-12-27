@@ -14,12 +14,12 @@ def create_speed_category_file(file, bucket_size=3):
 
     num_cats = data.max().values[0] + 1
     file_out = file.replace('train', f'train_cat_{num_cats}')
-    data.to_csv(file_out, index=False)
+    data.to_csv(file_out, index=False, header=False)
     return file_out, num_cats
 
 
 def write_image_value_pairs(file, look_back=2):
-    # read in speeds from train_cat.txt
+    # read in speeds from train_cat_{num_cats}.txt
     with open(file) as f:
         speeds = f.read().splitlines()
 
