@@ -34,6 +34,45 @@ def load_validation_data(batch_size=32):
 
 
 def _parse_training_function(example_proto):
+    # if random val == 0 or 1
+    def cond1_true(img, val):
+        print('cond1 True', val)
+
+        def aug_hue(img):
+            return tf.image.random_hue(img, max_delta=0.2)
+
+        def aug_brightness(img):
+            return tf.image.random_brightness(img, max_delta=0.2)
+
+        return tf.cond(tf.equal(val, 0),
+                       lambda: aug_hue(img),
+                       lambda: aug_brightness(img))
+
+    # if random val > 1
+    def cond1_false(img, val):
+        # if random val == 2 or 3
+        def cond2_true(img, val):
+            def aug_contrast(img):
+                return tf.image.random_contrast(img, 0.7, 1.3)
+
+            def aug_saturation(img):
+                return tf.image.random_saturation(img, 0.7, 1.3)
+
+            return tf.cond(tf.equal(val, 2), lambda: aug_contrast(img), lambda: aug_saturation(img))
+
+        # if random val == 4 or 5
+        def cond2_false(img, val):
+            def aug_jpg_quality(img):
+                return tf.image.random_jpeg_quality(img, 5, 100)
+
+            return tf.cond(tf.equal(val, 5),
+                           lambda: aug_jpg_quality(img),
+                           lambda: img)
+
+        return tf.cond(tf.less(val, 5),
+                       lambda: cond2_true(img, val),
+                       lambda: cond2_false(img, val))
+
     # Dictionary of features.
     feature = {
         'prev_img': tf.FixedLenFeature([], tf.string),
@@ -58,26 +97,11 @@ def _parse_training_function(example_proto):
     # Split the data and restack them to apply the same random image processing
     side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
 
-    # Defining all possible image augmentations
-    def aug_hue(img):
-        return tf.image.random_hue(img, max_delta=0.2)
-
-    def aug_brightness(img):
-        return tf.image.random_brightness(img, max_delta=0.3)
-
-    def aug_contrast(img):
-        return tf.image.random_contrast(img, 0.8, 1.2)
-
-    def aug_saturation(img):
-        return tf.image.random_saturation(img, 0.8, 1.2)
-
-    def aug_jpg_quality(img):
-        return tf.image.random_jpeg_quality(img, 10, 100)
-
-    # Selecting one of the above augmentations to apply to the images
-    random_aug_process = [aug_brightness, aug_contrast, aug_hue, aug_jpg_quality, aug_saturation]
-    random_aug_process_choice = tf.random_uniform(shape=(), minval=0, maxval=len(random_aug_process), dtype=tf.int64)
-    side_by_side_img = random_aug_process[random_aug_process_choice](side_by_side_img)
+    # Selecting one random augmentations (or none) to apply to the image pairs
+    aug_process = tf.random_uniform(shape=(), minval=0, maxval=6, dtype=tf.int64)
+    side_by_side_img = tf.cond(tf.less(aug_process, 2),
+                               lambda: cond1_true(side_by_side_img, aug_process),
+                               lambda: cond1_false(side_by_side_img, aug_process))
 
     # Randomly flip the images vertically or horizontally
     side_by_side_img = tf.image.random_flip_left_right(side_by_side_img)
@@ -204,12 +228,6 @@ def categorical_accuracy(y_true, y_pred):
     y_pred = tf.argmax(y_pred, -1)
     same_cat = tf.equal(y_true, y_pred)
     return tf.reduce_mean(tf.to_float(same_cat))
-
-
-def make_generator(dataset_iter):
-    while True:
-        inputs, labels = dataset_iter.get_next()
-        yield inputs, labels
 
 
 if __name__ == '__main__':
