@@ -279,7 +279,7 @@ if __name__ == '__main__':
     # Let's learn!
     for i in range(20):
         model.fit(train_iter, epochs=5, steps_per_epoch=20000//32,
-                  validation_data=[X_valid, y_valid], validation_steps=16)
+                  validation_data=[X_valid, y_valid], validation_steps=32)
         model.save(f'speed_model_{args.opt}_{i}.h5')
         train_iter = train_dataset.make_one_shot_iterator()
         img, label = train_iter.get_next()
