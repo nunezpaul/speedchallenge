@@ -24,6 +24,7 @@ for NAME in val test train; do
   mkdir -p data/images/$NAME
   mkdir -p data/labeled_csv/$NAME
   mkdir -p data/tfrecords/$NAME
+done
 
 # Convert the videos to jpegs using ffmpeg
 ffmpeg -v || apt install ffmpeg
@@ -50,4 +51,4 @@ python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/val.c
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/test/test.csv \
 --output data/tfrecords/test/test.tfrecord
 
-echo "Set up complete. Model is ready for training!"
+echo Set up complete. Model is ready for training!
