@@ -1,19 +1,15 @@
 import argparse
-import csv
-import os
 
 import pandas as pd
-
-from random import shuffle
 
 
 def create_image_value_pairs(speed_file, bucket_size):
     # read in speeds from file.txt
-    img_dir = speed_file.replace('.txt', '_images')
+    img_dir = speed_file.replace('/', '/images/').replace('.txt', '/img{}.jpg')
     data = pd.read_csv(speed_file, header=None, names=['speed'])
     data['category'] = data['speed'].apply(lambda x: x // bucket_size).astype(int)
-    data['prev_img'] = data.index.to_series().apply(lambda x: img_dir + f'/img{x}.jpg')
-    data['curr_img'] = data.index.to_series().apply(lambda x: img_dir + f'/img{x + 1}.jpg')
+    data['prev_img'] = data.index.to_series().apply(lambda x: img_dir.format(x))
+    data['curr_img'] = data.index.to_series().apply(lambda x: img_dir.format(x + 1))
     data = data.iloc[:-1, :]
     data = data[['prev_img', 'curr_img', 'category', 'speed']]
 
@@ -30,12 +26,12 @@ def data_split(data, filename_out, split):
 
 
 def write_labeled_csv_data(data, filename_out, sharding, num_shards=10, records_per_category=200):
-    filename_out = filename_out.replace('.', '_{}.')
+
     if not sharding:
-        data.to_csv(filename_out.format(0), index=False)
+        data.to_csv(filename_out, index=False)
         return
 
-    filename_out.replace('.', '_{shard}.')
+    filename_out = filename_out.replace('.', '_{}.')
     shard_filenames = {}
 
     # Split the data by its respective categorical designation
@@ -47,10 +43,10 @@ def write_labeled_csv_data(data, filename_out, sharding, num_shards=10, records_
     for shard in range(num_shards):
         shard_filenames[shard] = filename_out.format(shard)
         with open(shard_filenames[shard], 'w') as f:
-            for data_split in data_splits:
+            for idx, data_split in enumerate(data_splits):
                 with_replacement = data_split.shape[0] < records_per_category
                 sample = data_split.sample(records_per_category, replace=with_replacement)
-                sample.to_csv(f, index=False)
+                sample.to_csv(f, index=False, header=idx==0)
 
     return shard_filenames
 
@@ -67,6 +63,8 @@ if __name__ == '__main__':
                         help='Size in which every ith data point is sent as a validation point.')
     parser.add_argument('--data_split', action="store_true", default=False,
                         help='Takes every 10th data point and sends it to be validation data.')
+    parser.add_argument('--shard', action="store_true", default=False,
+                        help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--records_per_category', type=int, default=200,
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
@@ -80,5 +78,5 @@ if __name__ == '__main__':
                           filename_out=params['output_file'],
                           split=params['split_inc'])
     shard_filenames = write_labeled_csv_data(data, params['output_file'],
-                                             sharding=params['data_split'],
+                                             sharding=params['shard'],
                                              records_per_category=params['records_per_category'])

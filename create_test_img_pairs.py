@@ -8,7 +8,7 @@ def get_img_pairs(test_img_dir):
     num_imgs = len(os.listdir(test_img_dir))
     prev_img = []
     curr_img = []
-    for i in range(num_imgs):
+    for i in range(num_imgs - 1):
         prev_img.append(f'data/images/test/img{i}.jpg')
         curr_img.append(f'data/images/test/img{i + 1}.jpg')
 

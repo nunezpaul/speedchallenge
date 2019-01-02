@@ -2,10 +2,9 @@
 # https://github.com/Hvass-Labs/TensorFlow-Tutorials/blob/master/18_TFRecords_Dataset_API.ipynb
 
 import argparse
-import csv
-import os
 import sys
 
+import pandas as pd
 import tensorflow as tf
 
 
@@ -34,21 +33,24 @@ def print_progress(count, total):
     sys.stdout.flush()
 
 
-def convert_to_tfrecord(prev_img_paths, curr_img_paths, labels, out_path):
+def convert_to_tfrecord(prev_img_paths, curr_img_paths, out_path, categories, speeds):
     # Args:
     # image_paths   List of file-paths for the train_images.
     # labels        Class-labels for the train_images.
     # out_path      File-path for the TFRecords output file.
 
-    print("Converting: " + out_path)
+    print("\nCreating: " + out_path)
 
     # Number of train_images. Used when printing the progress.
-    num_images = len(labels)
+    num_images = len(prev_img_paths)
 
     # Open a TFRecordWriter for the output-file.
     with tf.python_io.TFRecordWriter(out_path) as writer:
         # Iterate over all the image-paths and class-labels.
-        for i, (prev_img_path, curr_img_path, label) in enumerate(zip(prev_img_paths, curr_img_paths, labels)):
+        for i, (prev_img_path, curr_img_path, category, speed) in enumerate(zip(prev_img_paths,
+                                                                                curr_img_paths,
+                                                                                categories,
+                                                                                speeds)):
             # Print the percentage-progress.
             print_progress(count=i, total=num_images - 1)
 
@@ -60,8 +62,12 @@ def convert_to_tfrecord(prev_img_paths, curr_img_paths, labels, out_path):
                 {
                     'prev_img': wrap_bytes(prev_img_bytes),
                     'curr_img': wrap_bytes(curr_img_bytes),
-                    'label': wrap_float(label)
                 }
+
+            if category:
+                data['category'] = wrap_int64(int(category))
+                data['speed'] = wrap_float(float(speed))
+
 
             # Wrap the data as TensorFlow Features.
             feature = tf.train.Features(feature=data)
@@ -78,14 +84,19 @@ def convert_to_tfrecord(prev_img_paths, curr_img_paths, labels, out_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
-    parser.add_argument('--input_filename', type=str, help='file to be converted into a tfrecord')
-    parser.add_argument('--output_filename', type=str, help='file location for tfrecord')
+    parser.add_argument('--input_filename', type=str, default='data/labeled_csv/train/train_shard_0.csv',
+                        help='file to be converted into a tfrecord')
+    parser.add_argument('--output_filename', type=str, default='data/tfrecords/train_tfrecords/shard_0.tfrecord',
+                        help='file location for tfrecord')
     args = parser.parse_args()
 
     file, out = args.input_filename, args.output_filename
-    with open(file) as f:
-        reader = csv.reader(f, delimiter=',')
-        data = [row for row in reader]
+    data = pd.read_csv(file)
+    length = data.shape[0]
+    width = data.shape[-1]
 
-    prev_img_paths, curr_img_paths, labels = zip(*data)
-    convert_to_tfrecord(prev_img_paths, curr_img_paths, [float(label) for label in labels], out)
+    convert_to_tfrecord(prev_img_paths=data.prev_img,
+                        curr_img_paths=data.curr_img,
+                        out_path=out,
+                        speeds=data.speed if width > 2 else [None] * length,
+                        categories=data.category if width > 2 else [None] * length)

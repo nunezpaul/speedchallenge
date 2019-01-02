@@ -17,27 +17,34 @@ ffmpeg -i data/videos/train.mp4 -start_number 0 -qscale:v 2 data/images/train/im
 ffmpeg -i data/videos/valid.mp4 -start_number 0 -qscale:v 2 data/images/valid/img%d.jpg -hide_banner; echo valid images done!
 ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%d.jpg -hide_banner; echo test images done!
 
-# Creating images label pairs
-mkdir data/train_image_value_pairs
-mkdir data/valid_image_value_pairs
+# Creating labeled_csv directories
+mkdir -p data/labeled_csv/val
+mkdir data/labeled_csv/test
+mkdir data/labeled_csv/train
+
+# Create all img label and place in respective directory
 python create_data_pairs.py --speed_file data/train.txt \
---output_file data/labeled_csv/train/train_shard.csv --data_split
-python create_data_pairs.py --speed_file data/valid.txt --output_file data/labeled_csv/val/val_1.csv
-python create_test_img_pairs.py --test_img_dir hold
+--output_file data/labeled_csv/train/train_shard.csv --shard
+python create_data_pairs.py --speed_file data/valid.txt --output_file data/labeled_csv/val/val.csv
+python create_test_img_pairs.py
 
 # Where the respective tfrecords will be stored
-mkdir data/train_tfrecords
-mkdir data/val_tfrecords
-mkdir data/test_tfrecords
+mkdir -p data/tfrecords/train
+mkdir data/tfrecords/val
+mkdir data/tfrecords/test
 
 # Writing the shards of the training tfrecords
 for i in {0..9}
 do
-INPUTFILE=data/sharded_image_value_pairs/image_value_pairs_$i.csv
-OUTPUTFILE=data/train_tfrecords/image_value_pairs_$i.tfrecord
+INPUTFILE=data/labeled_csv/train/train_shard_$i.csv
+OUTPUTFILE=data/tfrecords/train/shard_$i.tfrecord
 python convert_images_to_tfrecord.py --input_filename $INPUTFILE --output_filename $OUTPUTFILE
 done
 
-# Writing the testing data to tfrecord
-python convert_images_to_tfrecord.py --input_filename data/test_image_value_pairs.csv \
---output data/test_tfrecords/test_image_value_pairs.tfrecord
+# Writing the validation and test data to tfrecord
+python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/val.csv \
+--output data/tfrecords/val/val.tfrecord
+python convert_images_to_tfrecord.py --input_filename data/labeled_csv/test/test.csv \
+--output data/tfrecords/test/test.tfrecord
+
+echo "Set up complete. Model is ready for training!"
