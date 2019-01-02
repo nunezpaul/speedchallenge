@@ -1,3 +1,4 @@
+import argparse
 import csv
 import os
 
@@ -6,112 +7,78 @@ import pandas as pd
 from random import shuffle
 
 
-def create_speed_category_file(file, bucket_size=3):
-    data = pd.read_csv(file, header=None)
-    data.columns = ['Speed']
-    data //= bucket_size
-    data = data.astype(int)
+def create_image_value_pairs(speed_file, bucket_size):
+    # read in speeds from file.txt
+    img_dir = speed_file.replace('.txt', '_images')
+    data = pd.read_csv(speed_file, header=None, names=['speed'])
+    data['category'] = data['speed'].apply(lambda x: x // bucket_size).astype(int)
+    data['prev_img'] = data.index.to_series().apply(lambda x: img_dir + f'/img{x}.jpg')
+    data['curr_img'] = data.index.to_series().apply(lambda x: img_dir + f'/img{x + 1}.jpg')
+    data = data.iloc[:-1, :]
+    data = data[['prev_img', 'curr_img', 'category', 'speed']]
 
-    num_cats = data.max().values[0] + 1
-    file_out = file.replace('train', f'train_cat_{num_cats}')
-    data.to_csv(file_out, index=False, header=False)
-    return file_out, num_cats
-
-
-def write_image_value_pairs(file, look_back=2):
-    # read in speeds from train_cat_{num_cats}.txt
-    with open(file) as f:
-        speeds = f.read().splitlines()
-
-    image_label_file = 'data/image_value_pairs.csv'
-    with open(image_label_file, 'w') as f:
-        fieldnames = list(range(look_back)) + ['speed']
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-
-        for idx, speed in enumerate(speeds):
-            if idx < (look_back - 1):
-                continue
-
-            write_dict = {'speed': speed}
-            for i in range(look_back):
-                write_dict[i] = 'data/train_images/img{idx}.jpg'.format(idx=idx - i)
-            writer.writerow(write_dict)
-
-    print('done!')
-    return image_label_file
+    return data
 
 
-def train_test_split(filename, split=10):
-    datafilenames = {}
-    datafiles = {}
+def data_split(data, filename_out, split):
+    # Grab every ith data point and send it to a csv file
+    val_data = data.iloc[::split, :]
+    val_data.to_csv(filename_out.replace('train', 'val'), index=False)
 
-    # Create filenames and open train/test files to be written
-    for data_type in ('train', 'val'):
-        datafilenames[data_type] = 'data/{type}_image_value_pairs.csv'.format(type=data_type)
-        datafiles[data_type] = open(datafilenames[data_type], 'w')
-
-    # Read each line of the main image_value_pair
-    with open(filename) as f:
-        data = f.read().splitlines()
-
-    # Separating the files now. Every Kth data point is for testing
-    count = 1
-    for idx, line in enumerate(data):
-        if count == split:
-            count = 1
-            datafiles['val'].write(line + '\n')
-            continue
-
-        datafiles['train'].write(line + '\n')
-        count += 1
-
-    print('done!')
-    return datafilenames['train']
+    # Remove every ith data point and return the resulting dataframe
+    return data.drop(val_data.index)
 
 
-def shard_data(filename, num_cats, num_shards=10, records_per_category=200):
-    datafilenames = {}
-    datafiles = {}
+def write_labeled_csv_data(data, filename_out, sharding, num_shards=10, records_per_category=200):
+    filename_out = filename_out.replace('.', '_{}.')
+    if not sharding:
+        data.to_csv(filename_out.format(0), index=False)
+        return
+
+    filename_out.replace('.', '_{shard}.')
+    shard_filenames = {}
 
     # Split the data by its respective categorical designation
-    data = pd.read_csv(filename, header=None)
-    cat_idx = data.shape[-1] - 1
     data_splits = []
-    for i in range(num_cats):
-        data_splits.append(data[data[cat_idx] == i])
+    for i in range(data.category.max() + 1):
+        data_splits.append(data[data.category == i])
 
     # Create filenames and open shard files to be written
     for shard in range(num_shards):
-        datafilenames[shard] = 'data/sharded_image_value_pairs/image_value_pairs_{shard}.csv'.format(shard=shard)
-        with open(datafilenames[shard], 'w') as f:
+        shard_filenames[shard] = filename_out.format(shard)
+        with open(shard_filenames[shard], 'w') as f:
             for data_split in data_splits:
-                need_replacement = data_split.shape[0] < records_per_category
-                sample = data_split.sample(records_per_category, replace=need_replacement)
-                sample.to_csv(f, header=False, index=False)
+                with_replacement = data_split.shape[0] < records_per_category
+                sample = data_split.sample(records_per_category, replace=with_replacement)
+                sample.to_csv(f, index=False)
 
-    return datafilenames
-
-
-def shuffle_sharded_data(filenames):
-    for key, filename in filenames.items():
-        with open(filename) as f:
-            datalines = f.readlines()
-            shuffle(datalines)
-
-        with open(filename, 'w') as f:
-            for dataline in datalines:
-                f.writelines(dataline)
-    print('done!')
+    return shard_filenames
 
 
 if __name__ == '__main__':
-    file = 'data/train.txt'
-    cat_file, num_cats = create_speed_category_file(file)
-    image_label_file = write_image_value_pairs(cat_file)
-    train_image_label_file = train_test_split(image_label_file)
-    shard_file_names = shard_data(train_image_label_file, num_cats)
-    shuffle_sharded_data(shard_file_names)
+    parser = argparse.ArgumentParser(description='Parameters for creating the data pairs.')
+    parser.add_argument('--speed_file', type=str, default='data/train.txt',
+                        help='file path for where the speeds are listed.')
+    parser.add_argument('--output_file', type=str, default='data/labeled_csv/train/train_shard.csv',
+                        help='file path for where the labeled data is going to be written to.')
+    parser.add_argument('--bucket_size', type=int, default=3,
+                        help='Size the grouping window for all speeds')
+    parser.add_argument('--split_inc', type=int, default=10,
+                        help='Size in which every ith data point is sent as a validation point.')
+    parser.add_argument('--data_split', action="store_true", default=False,
+                        help='Takes every 10th data point and sends it to be validation data.')
+    parser.add_argument('--records_per_category', type=int, default=200,
+                        help='How many samples from each category will be taken.')
+    parser.add_argument('--num_shards', type=int, default=10,
+                        help='How many shards will be created from the data to be written.')
+    params = vars(parser.parse_args())
 
-    # remove the intermediate files 
-    os.remove('data/image_value_pairs.csv')
-    os.remove('data/train_image_value_pairs.csv')
+    file_in = params['speed_file']
+    data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'])
+    if params['data_split']:
+        data = data_split(data,
+                          filename_out=params['output_file'],
+                          split=params['split_inc'])
+    shard_filenames = write_labeled_csv_data(data, params['output_file'],
+                                             sharding=params['data_split'],
+                                             records_per_category=params['records_per_category'])
