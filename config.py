@@ -17,8 +17,6 @@ class Config(object):
 
 
 if __name__ == '__main__':
-    print('here')
     config = Config()
-    print(config)
     for key, val in config.settings.items():
         print(key, val)
