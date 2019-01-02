@@ -13,7 +13,7 @@ done
 # Download labeled speeds for their respective videos
 for NAME in val train; do
   if test ! -f data/$NAME.txt; then
-    wget sunlight.caltech.edu/pnunez/speedchallenge/$NAME.txt
+    wget sunlight.caltech.edu/pnunez/speedchallenge/$NAME.txt && mv $NAME.txt data
   else
     echo $NAME.txt already exists!
   fi
