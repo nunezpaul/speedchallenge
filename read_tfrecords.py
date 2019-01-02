@@ -6,7 +6,6 @@ tf.enable_eager_execution()
 
 # if random val == 0 or 1
 def cond1_true(img, val):
-    print('cond1 True', val)
     def aug_hue(img):
         return tf.image.random_hue(img, max_delta=0.2)
 
@@ -48,7 +47,8 @@ def _parse_function(example_proto):
     features = {
         'prev_img': tf.FixedLenFeature([], tf.string),
         'curr_img': tf.FixedLenFeature([], tf.string),
-        'label': tf.FixedLenFeature([], tf.float32)
+        # 'category': tf.FixedLenFeature([], tf.int64),
+        # 'speed': tf.FixedLenFeature([], tf.float32)
     }
 
     # Parse the input tf.Example proto using the dictionary above.
@@ -63,7 +63,7 @@ def _parse_function(example_proto):
     return aug_img
 
 if __name__ == '__main__':
-    data_path = 'data/train_tfrecords/image_value_pairs_0.tfrecord'
+    data_path = 'data/tfrecords/test/test.tfrecord'
     filenames = [data_path]
     dataset = tf.data.TFRecordDataset(filenames)
 
