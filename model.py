@@ -1,19 +1,16 @@
-# https://github.com/experiencor/speed-prediction/blob/master/Dashcam%20Speed%20-%20C3D.ipynb
-
-import argparse
 import os
 import uuid
 
 import keras as k
 import tensorflow as tf
 
-from settings import Config
+from config import Config
 
 
-tf.enable_eager_execution()
+# tf.enable_eager_execution()
 
 
-class DatasetBase(object):
+class DataBase(object):
     def __init__(self):
         # Feature dictionary to pull from TFRecord.
         self.features = {
@@ -43,9 +40,8 @@ class DatasetBase(object):
         return (tf.to_float(img) - 225. / 2.) / 255.
 
 
-class TrainData(DatasetBase):
+class TrainData(DataBase):
     def __init__(self, file, num_shards, batch_size):
-        filenames = [file.format(i) for i in range(num_shards)]
         super(TrainData, self).__init__()
 
         # Online data augmentation values
@@ -56,6 +52,7 @@ class TrainData(DatasetBase):
         self.random_jpeg_quality_range = [5, 100]
 
         # Finish setting up the dataset
+        filenames = [file.format(i) for i in range(num_shards)]
         self.img, self.label, self.iter = self.setup_dataset_iter(filenames, batch_size, self._parse_function)
         self.img = tf.reshape(self.img, (-1, 300, 640, 6))
 
@@ -145,7 +142,7 @@ class TrainData(DatasetBase):
                        lambda: img)  # if val is 5
 
 
-class ValidData(DatasetBase):
+class ValidData(DataBase):
     def __init__(self, file, batch_size):
         super(ValidData, self).__init__()
         self.crop_x_left = 0
@@ -176,15 +173,15 @@ class ValidData(DatasetBase):
     
 
 class DeepVO(object):
-    def __init__(self, dropout, bucket_size, train_data, load_model, opt, lr, tpu):
+    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu):
         self.uuid = uuid.uuid4()
         self.load_model = load_model
-        self.train_data = train_data
         self.dropout = dropout
+        self.bucket_size = bucket_size
         self.num_buckets = 30 // bucket_size
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
-        self.model = self.setup_model()
+        self.model = self.setup_model(train_data)
 
         #convert model to tpu model
         if tpu:
@@ -209,19 +206,20 @@ class DeepVO(object):
         callbacks.append(tensorboard)
         return callbacks
 
-    def setup_model(self):
+    def setup_model(self, train_data):
         if self.load_model:
             model = k.models.load_model(self.load_model)
         else:
-            model_input = k.layers.Input(tensor=self.train_data.img)
+            model_input = k.layers.Input(tensor=train_data.img)
             model_output = self.cnn(model_input)
             model = k.models.Model(inputs=model_input, outputs=model_output)
 
             model.compile(optimizer=self.optimizer,
                           loss='sparse_categorical_crossentropy',
-                          target_tensors=[self.train_data.label],
+                          target_tensors=[train_data.label],
                           metrics=[self.categorical_accuracy, self.mse_metric]
                           )
+            print(model.summary())
 
         return model
 
@@ -295,30 +293,19 @@ class DeepVO(object):
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
 
-    def fit(self, valid_data):
+    def fit(self, train_data, valid_data):
         for i in range(20):
-            self.model.fit(self.train_data.iter,
+            self.model.fit(train_data.iter,
                            epochs=5,
                            steps_per_epoch=20000//32,
-                           validation_data=[valid_data.img, valid_data.label],
-                           validation_steps=32,
+                           validation_data=[valid_data.img, valid_data.label] if valid_data else None,
+                           validation_steps=62,
                            callbacks=self.callbacks)
             self.model.save(f'speed_model_{self.optimizer}_{i}.h5')
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parameters for training model.')
-    parser.add_argument('--tpu', action="store_true",
-                        help='determine if to be trained on tpu')
-    parser.add_argument('--opt', choices=['adam', 'sgd'],
-                        help='which optimizer to use')
-    parser.add_argument('--lr', type=float, default=1e-3,
-                        help='set the learning rate')
-    parser.add_argument('--load_model', type=str, default=None,
-                        help='file path to saved keras model to load and continue training.')
-    parser.add_argument
-    args = parser.parse_args()
-    
+    config = Config()
     train_data = TrainData('data/train_tfrecords/image_value_pairs_{}.tfrecord', num_shards=10, batch_size=32)
     valid_data = ValidData('data/val_tfrecords/val_image_value_pairs.tfrecord', batch_size=32)
-    # deep_vo = DeepVO()
+    deep_vo = DeepVO(train_data=train_data, **config.params)
