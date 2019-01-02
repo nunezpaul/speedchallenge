@@ -64,10 +64,9 @@ def convert_to_tfrecord(prev_img_paths, curr_img_paths, out_path, categories, sp
                     'curr_img': wrap_bytes(curr_img_bytes),
                 }
 
-            if category:
+            if category is not None:
                 data['category'] = wrap_int64(int(category))
                 data['speed'] = wrap_float(float(speed))
-
 
             # Wrap the data as TensorFlow Features.
             feature = tf.train.Features(feature=data)
@@ -86,7 +85,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert csv training file into tfrecord files.')
     parser.add_argument('--input_filename', type=str, default='data/labeled_csv/train/train_shard_0.csv',
                         help='file to be converted into a tfrecord')
-    parser.add_argument('--output_filename', type=str, default='data/tfrecords/train_tfrecords/shard_0.tfrecord',
+    parser.add_argument('--output_filename', type=str, default='data/tfrecords/train/shard_0.tfrecord',
                         help='file location for tfrecord')
     args = parser.parse_args()
 
