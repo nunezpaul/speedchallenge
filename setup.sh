@@ -4,7 +4,11 @@
 mkdir -p data/videos
 wget sunlight.caltech.edu/pnunez/speedchallenge/test.mp4 && mv test.mp4 data/videos
 wget sunlight.caltech.edu/pnunez/speedchallenge/train.mp4 && mv train.mp4 data/videos
-wget sunlight.caltech.edu/pnunez/speedchallenge/train.txt && mv train.txt data/videos
+wget sunlight.caltech.edu/pnunez/speedchallenge/val.mp4 && mv val.mp4 data/videos
+
+# Download labeled speeds for their respective videos
+wget sunlight.caltech.edu/pnunez/speedchallenge/val.txt
+wget sunlight.caltech.edu/pnunez/speedchallenge/train.txt
 
 # Create the image directories that the respective frames from each video will go into
 mkdir -p data/images/train
