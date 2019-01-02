@@ -28,7 +28,7 @@ def data_split(data, filename_out, split):
 def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10, records_per_category=200):
 
     if not sharding:
-        data.to_csv(filename_out, index=False)
+        _write_csv(data, filename=filename_out, shuffle=shuffle)
         return
 
     filename_out = filename_out.replace('.', '_{}.')
@@ -42,19 +42,23 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
     # Create filenames and open shard files to be written
     for shard in range(num_shards):
         shard_filenames[shard] = filename_out.format(shard)
-        with open(shard_filenames[shard], 'w') as f:
-            for idx, data_split in enumerate(data_splits):
-                with_replacement = data_split.shape[0] < records_per_category
-                sample = data_split.sample(records_per_category, replace=with_replacement)
-                if idx == 0:
-                    data_to_write = sample
-                else:
-                    data_to_write = data_to_write.append(sample)
-            if shuffle:
-                data_to_write = data_to_write.sample(frac=1.0).reset_index(drop=True)
-            data_to_write.to_csv(f, index=False)
+        for idx, data_split in enumerate(data_splits):
+            with_replacement = data_split.shape[0] < records_per_category
+            sample = data_split.sample(records_per_category, replace=with_replacement)
+            if idx == 0:
+                data_to_write = sample
+            else:
+                data_to_write = data_to_write.append(sample)
+
+        _write_csv(data_to_write, shard_filenames[shard], shuffle=shuffle)
 
     return shard_filenames
+
+
+def _write_csv(dataframe, filename, shuffle):
+    if shuffle:
+        dataframe = dataframe.sample(frac=1.0).reset_index(drop=True)
+    dataframe.to_csv(filename, index=False)
 
 
 if __name__ == '__main__':
