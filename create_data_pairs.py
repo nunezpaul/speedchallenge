@@ -25,7 +25,7 @@ def data_split(data, filename_out, split):
     return data.drop(val_data.index)
 
 
-def write_labeled_csv_data(data, filename_out, sharding, num_shards=10, records_per_category=200):
+def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10, records_per_category=200):
 
     if not sharding:
         data.to_csv(filename_out, index=False)
@@ -46,7 +46,13 @@ def write_labeled_csv_data(data, filename_out, sharding, num_shards=10, records_
             for idx, data_split in enumerate(data_splits):
                 with_replacement = data_split.shape[0] < records_per_category
                 sample = data_split.sample(records_per_category, replace=with_replacement)
-                sample.to_csv(f, index=False, header=idx==0)
+                if idx == 0:
+                    data_to_write = sample
+                else:
+                    data_to_write = data_to_write.append(sample)
+            if shuffle:
+                data_to_write = data_to_write.sample(frac=1.0).reset_index(drop=True)
+            data_to_write.to_csv(f, index=False)
 
     return shard_filenames
 
@@ -65,6 +71,8 @@ if __name__ == '__main__':
                         help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--shard', action="store_true", default=False,
                         help='Takes every 10th data point and sends it to be validation data.')
+    parser.add_argument('--shuffle', action="store_true", default=False,
+                        help='Shuffle the data before writing the data.')
     parser.add_argument('--records_per_category', type=int, default=200,
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
@@ -79,4 +87,5 @@ if __name__ == '__main__':
                           split=params['split_inc'])
     shard_filenames = write_labeled_csv_data(data, params['output_file'],
                                              sharding=params['shard'],
-                                             records_per_category=params['records_per_category'])
+                                             records_per_category=params['records_per_category'],
+                                             shuffle=params['shuffle'])
