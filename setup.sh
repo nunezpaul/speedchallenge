@@ -34,8 +34,8 @@ ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%
 
 # Create all img label and place in respective directory
 python create_data_pairs.py --speed_file data/train.txt \
---output_file data/labeled_csv/train/train_shard.csv --shard
-python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/val.csv
+--output_file data/labeled_csv/train/train_shard.csv --shard --shuffle
+python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/val.csv --shuffle
 python create_test_img_pairs.py
 
 # Writing the shards of the training tfrecords
