@@ -333,14 +333,14 @@ class DeepVO(object):
 
 if __name__ == '__main__':
     config = Config()
+    if config.params['save_dir']:
+        from google.colab import drive
+        drive.mount('gdrive')
+    
     train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32)
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
-
-    if config.params['save_dir']:
-        from google.colab import drive
-        drive.mount('gdrive')
 
     prediction = deep_vo.predict(valid_data)
     print(prediction)
