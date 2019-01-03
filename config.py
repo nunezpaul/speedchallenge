@@ -19,6 +19,8 @@ class Config(object):
                             help='Set the bucket sizing that the data will be categorized into.')
         parser.add_argument('--dropout', type=float, default=0.5,
                             help='Dropout percent to keep during training.')
+        parser.add_argument('--save_dir', type=str, default=None,
+                            help='Where to save the trained model.')
         self.params = vars(parser.parse_args())
 
 

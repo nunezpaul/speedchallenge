@@ -6,7 +6,6 @@ import tensorflow as tf
 
 from config import Config
 
-
 # tf.enable_eager_execution()
 
 
@@ -168,7 +167,7 @@ class ValidData(DataBase):
     
 
 class DeepVO(object):
-    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu):
+    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir):
         self.uuid = uuid.uuid4()
         self.load_model = load_model
         self.dropout = dropout
@@ -177,6 +176,7 @@ class DeepVO(object):
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
+        self.save_dir = save_dir if save_dir else ''
 
         #convert model to tpu model
         if tpu:
@@ -305,7 +305,7 @@ class DeepVO(object):
                            validation_data=[valid_data.img, valid_data.label] if valid_data else None,
                            validation_steps=62,
                            callbacks=self.callbacks)
-            self.model.save(f'speed_model_{self.optimizer}_{i}.h5')
+            self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
 
 
 if __name__ == '__main__':
@@ -314,4 +314,9 @@ if __name__ == '__main__':
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
+
+    if config.params['save_dir']:
+        from google.colab import drive
+        drive.mount('gdrive')
+
     deep_vo.fit(train_data=train_data, valid_data=valid_data)
