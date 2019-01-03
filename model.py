@@ -299,8 +299,7 @@ class DeepVO(object):
                            epochs=5,
                            steps_per_epoch=20000 // 32,
                            validation_data=[valid_data.img,
-                                            {'speed': valid_data.speed,
-                                             'label': valid_data.label}
+                                            [valid_data.speed, valid_data.label]
                                             ] if valid_data else None,
                            validation_steps=63,
                            callbacks=self.callbacks,)
