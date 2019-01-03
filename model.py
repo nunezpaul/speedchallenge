@@ -291,8 +291,8 @@ class DeepVO(object):
     def categorical_accuracy(self, ys, y_pred):
         y_true = ys[0]
         print('here', y_true, y_pred)
-        y_pred = tf.to_int64(tf.argmax(y_pred, -1))
-        same_cat = tf.equal(y_true, y_pred)
+        y_pred_cat = tf.argmax(y_pred, -1)
+        same_cat = tf.equal(y_true, y_pred_cat)
         return tf.reduce_mean(tf.to_float(same_cat))
 
     def fit(self, train_data, valid_data):
