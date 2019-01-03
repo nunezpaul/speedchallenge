@@ -63,7 +63,7 @@ def _parse_function(example_proto):
     return aug_img
 
 if __name__ == '__main__':
-    data_path = 'data/tfrecords/test/test.tfrecord'
+    data_path = 'data/tfrecords/val/val.tfrecord'
     filenames = [data_path]
     dataset = tf.data.TFRecordDataset(filenames)
 
@@ -73,5 +73,4 @@ if __name__ == '__main__':
         cv2.imshow('image', img.numpy()[...,::-1])
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
 
