@@ -169,6 +169,7 @@ class ValidData(DataBase):
 class DeepVO(object):
     def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir):
         self.uuid = uuid.uuid4()
+        self.save_dir = save_dir if save_dir else ''
         self.load_model = load_model
         self.dropout = dropout
         self.bucket_size = bucket_size
@@ -176,7 +177,6 @@ class DeepVO(object):
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
-        self.save_dir = save_dir if save_dir else ''
 
         #convert model to tpu model
         if tpu:
@@ -186,7 +186,12 @@ class DeepVO(object):
             self.model = tf.contrib.tpu.keras_to_tpu_model(self.model, strategy=strategy)
 
     def setup_optimizer(self, opt, lr):
-        if opt == 'sgd':
+        if self.load_model:
+            print('Reloading previous optimizer state.')
+            prev_model = k.models.load_model(self.load_model, custom_objects={'tf': tf, 'k': k})
+            opt = prev_model.optimizer
+            print('Complete!')
+        elif opt == 'sgd':
             opt = k.optimizers.SGD(lr=lr, momentum=0.9)
         else:
             opt = k.optimizers.adam(lr=lr)
@@ -198,26 +203,38 @@ class DeepVO(object):
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)
-        callbacks.append(tensorboard)
+        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + '{epoch:02d}-{val_loss:.2f}.hdf5',
+                                                 monitor='val_loss',
+                                                 verbose=0,
+                                                 save_best_only=True,
+                                                 save_weights_only=False,
+                                                 mode='auto',
+                                                 period=1)
+        reduce_lr = k.callbacks.ReduceLROnPlateau(monitor='val_loss',
+                                                  factor=0.2,
+                                                  patience=5,
+                                                  min_lr=10 ** -7)
+        callbacks += [tensorboard, checkpoint, reduce_lr]
         return callbacks
 
     def setup_model(self, train_data):
-        if self.load_model:
-            model = k.models.load_model(self.load_model)
-        else:
-            model_input = k.layers.Input(tensor=train_data.img)
-            model_output = self.cnn(model_input)
-            model = k.models.Model(inputs=model_input, outputs=model_output)
+        model_input = k.layers.Input(tensor=train_data.img)
+        model_output = self.cnn(model_input)
+        model = k.models.Model(inputs=model_input, outputs=model_output)
 
-            model.compile(optimizer=self.optimizer,
-                          loss=self.sparse_categorical_crossentropy,
-                          target_tensors=[
-                              {'label': train_data.label,
-                               'speed': train_data.speed}
-                          ],
-                          metrics=[self.categorical_accuracy, self.mean_squared_error]
-                          )
-            print(model.summary())
+        model.compile(optimizer=self.optimizer,
+                      loss=self.sparse_categorical_crossentropy,
+                      target_tensors=[
+                          {'label': train_data.label,
+                           'speed': train_data.speed}
+                      ],
+                      metrics=[self.categorical_accuracy, self.mean_squared_error]
+                      )
+        print(model.summary())
+        if self.load_model:
+            print(f'Reloading pretrained {self.load_model} model.')
+            model.load_weights(self.load_model)
+            print(f'Successfully reloaded pretrained {self.load_model} model!')
 
         return model
 
@@ -298,14 +315,20 @@ class DeepVO(object):
         return tf.reduce_mean(tf.to_float(same_cat))
 
     def fit(self, train_data, valid_data):
+        validation_data = [valid_data.img, {'label': valid_data.label,
+                                            'speed': valid_data.speed}] if valid_data else None
         for i in range(20):
             self.model.fit(train_data.iter,
                            epochs=5,
-                           steps_per_epoch=20000//32,
-                           validation_data=[valid_data.img, valid_data.label] if valid_data else None,
+                           steps_per_epoch=20000 // 32,
+                           validation_data=validation_data if not self.load_model else None,
                            validation_steps=62,
                            callbacks=self.callbacks)
             self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
+
+    def predict(self, data):
+        prediction = self.model.predict(data.img, steps=63)
+        return prediction
 
 
 if __name__ == '__main__':
@@ -319,4 +342,8 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive')
 
+    prediction = deep_vo.predict(valid_data)
+    print(prediction)
+    print(dir(prediction))
+    
     deep_vo.fit(train_data=train_data, valid_data=valid_data)

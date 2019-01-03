@@ -13,8 +13,8 @@ class Config(object):
                             help='which optimizer to use')
         parser.add_argument('--lr', type=float, default=1e-3,
                             help='set the learning rate')
-        parser.add_argument('--load_model', type=str, default=None,
-                            help='file path to saved keras model to load and continue training.')
+        parser.add_argument('--load_model', type=str, default='data/models/speed_model_adam_7.h5',
+                            help='file path to saved keras model to load.')
         parser.add_argument('--bucket_size', type=int, default=3,
                             help='Set the bucket sizing that the data will be categorized into.')
         parser.add_argument('--dropout', type=float, default=0.5,
