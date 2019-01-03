@@ -345,5 +345,5 @@ if __name__ == '__main__':
     prediction = deep_vo.predict(valid_data)
     print(prediction)
     print(dir(prediction))
-    
+
     deep_vo.fit(train_data=train_data, valid_data=valid_data)
