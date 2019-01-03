@@ -167,6 +167,7 @@ class ValidData(DataBase):
 
 class DeepVO(object):
     def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir):
+        self.save_dir = save_dir if save_dir else ''
         self.uuid = uuid.uuid4()
         self.load_model = load_model
         self.dropout = dropout
@@ -175,7 +176,6 @@ class DeepVO(object):
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
-        self.save_dir = save_dir if save_dir else ''
 
         #convert model to tpu model
         if tpu:
@@ -193,7 +193,7 @@ class DeepVO(object):
 
     def setup_callbacks(self):
         callbacks = []
-        tensorboard = tf.keras.callbacks.TensorBoard(log_dir=f'./log/{self.uuid}',
+        tensorboard = tf.keras.callbacks.TensorBoard(log_dir=self.save_dir + f'./log/{self.uuid}',
                                                      histogram_freq=0,
                                                      write_graph=True,
                                                      write_images=True)
