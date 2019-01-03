@@ -210,7 +210,8 @@ class DeepVO(object):
 
             model.compile(optimizer=self.optimizer,
                           loss=self.sparse_categorical_crossentropy,
-                          target_tensors=[train_data.speed],
+                          target_tensors=[{'label': train_data.label,
+                                           'speed': train_data.speed}],
                           metrics=[self.categorical_accuracy, self.mean_squared_error],
                           )
             print(model.summary())
@@ -275,36 +276,34 @@ class DeepVO(object):
 
         return speed_prob
 
-    def mean_squared_error(self, y_true, y_pred):
+    def mean_squared_error(self, ys, y_pred):
+        y_true = ys['speed']
         y_pred = tf.argmax(y_pred, -1)
         y_pred_fp = (tf.to_float(y_pred) + 0.5) * self.bucket_size
 
         return tf.reduce_mean(tf.square(y_true - y_pred_fp))
 
-    def sparse_categorical_crossentropy(self, y, y_pred):
-        y_true = tf.to_int64(y) // self.bucket_size
+    def sparse_categorical_crossentropy(self, ys, y_pred):
+        y_true = ys['label']
         cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
-    def categorical_accuracy(self, y, y_pred):
-        y_true = tf.to_int64(y) // self.bucket_size
+    def categorical_accuracy(self, ys, y_pred):
+        y_true = ys['label']
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
 
-    def to_category(self, y):
-        return y // self.bucket_size
-
     def fit(self, train_data, valid_data):
         for i in range(20):
-            self.model.fit(train_data.iter,
+            self.model.fit(
                            epochs=5,
                            steps_per_epoch=20000 // 32,
-                           # validation_data=[valid_data.img,
-                           #                  {'speed': valid_data.speed,
-                           #                   'label': valid_data.label}
-                           #                  ] if valid_data else None,
-                           validation_steps=62,
+                           validation_data=[valid_data.img,
+                                            {'speed': valid_data.speed,
+                                             'label': valid_data.label}
+                                            ] if valid_data else None,
+                           validation_steps=63,
                            callbacks=self.callbacks,)
             self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
 
