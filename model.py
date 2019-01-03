@@ -210,7 +210,7 @@ class DeepVO(object):
 
             model.compile(optimizer=self.optimizer,
                           loss=self.sparse_categorical_crossentropy,
-                          target_tensors=[[train_data.label, train_data.speed]],
+                          target_tensors=[train_data.speed],
                           metrics=[self.categorical_accuracy, self.mean_squared_error],
                           )
             print(model.summary())
@@ -276,20 +276,20 @@ class DeepVO(object):
         return speed_prob
 
     def mean_squared_error(self, ys, y_pred):
-        y_true = ys[1]
+        y_true = ys
         y_pred = tf.argmax(y_pred, -1)
         y_pred_fp = (tf.to_float(y_pred) + 0.5) * self.bucket_size
 
         return tf.reduce_mean(tf.square(y_true - y_pred_fp))
 
     def sparse_categorical_crossentropy(self, ys, y_pred):
-        y_true = ys[0]
+        y_true = tf.clip_by_value(ys // self.bucket_size, 0, self.num_buckets - 1)
         print(y_true, y_pred)
         cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
     def categorical_accuracy(self, ys, y_pred):
-        y_true = ys[0]
+        y_true = tf.clip_by_value(ys // self.bucket_size, 0, self.num_buckets - 1)
         print('here', y_true, y_pred)
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(tf.to_int64(y_true), y_pred)
