@@ -1,7 +1,6 @@
 import os
 import uuid
 
-import keras as k
 import tensorflow as tf
 
 from config import Config
@@ -187,27 +186,27 @@ class DeepVO(object):
 
     def setup_optimizer(self, opt, lr):
         if opt == 'sgd':
-            opt = k.optimizers.SGD(lr=lr, momentum=0.9)
+            opt = tf.train.GradientDescentOptimizer(learning_rate=lr)
         else:
-            opt = k.optimizers.adam(lr=lr)
+            opt = tf.train.AdamOptimizer(learning_rate=lr)
         return opt
 
     def setup_callbacks(self):
         callbacks = []
-        tensorboard = k.callbacks.TensorBoard(log_dir=f'./log/{self.uuid}',
-                                              histogram_freq=0,
-                                              write_graph=True,
-                                              write_images=True)
+        tensorboard = tf.keras.callbacks.TensorBoard(log_dir=f'./log/{self.uuid}',
+                                                     histogram_freq=0,
+                                                     write_graph=True,
+                                                     write_images=True)
         callbacks.append(tensorboard)
         return callbacks
 
     def setup_model(self, train_data):
         if self.load_model:
-            model = k.models.load_model(self.load_model)
+            model = tf.keras.models.load_model(self.load_model)
         else:
-            model_input = k.layers.Input(tensor=train_data.img)
+            model_input = tf.keras.layers.Input(tensor=train_data.img)
             model_output = self.cnn(model_input)
-            model = k.models.Model(inputs=model_input, outputs=model_output)
+            model = tf.keras.models.Model(inputs=model_input, outputs=model_output)
 
             model.compile(optimizer=self.optimizer,
                           loss=self.sparse_categorical_crossentropy,
@@ -222,66 +221,66 @@ class DeepVO(object):
         return model
 
     def cnn(self, model_input):
-        conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
-        conv1 = k.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
-        conv1 = k.layers.BatchNormalization()(conv1)
-        conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu1')(conv1)
+        conv1 = tf.keras.layers.ZeroPadding2D((3, 3))(model_input)
+        conv1 = tf.keras.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
+        conv1 = tf.keras.layers.BatchNormalization()(conv1)
+        conv1 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu1')(conv1)
 
-        conv2 = k.layers.ZeroPadding2D((2, 2))(conv1)
-        conv2 = k.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
-        conv2 = k.layers.BatchNormalization()(conv2)
-        conv2 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu2')(conv2)
+        conv2 = tf.keras.layers.ZeroPadding2D((2, 2))(conv1)
+        conv2 = tf.keras.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
+        conv2 = tf.keras.layers.BatchNormalization()(conv2)
+        conv2 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu2')(conv2)
 
-        conv3a = k.layers.ZeroPadding2D((2, 2))(conv2)
-        conv3a = k.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
-        conv3a = k.layers.BatchNormalization()(conv3a)
-        conv3a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3a')(conv3a)
+        conv3a = tf.keras.layers.ZeroPadding2D((2, 2))(conv2)
+        conv3a = tf.keras.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
+        conv3a = tf.keras.layers.BatchNormalization()(conv3a)
+        conv3a = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu3a')(conv3a)
 
-        conv3b = k.layers.ZeroPadding2D()(conv3a)
-        conv3b = k.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
-        conv3b = k.layers.BatchNormalization()(conv3b)
-        conv3b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3b')(conv3b)
+        conv3b = tf.keras.layers.ZeroPadding2D()(conv3a)
+        conv3b = tf.keras.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
+        conv3b = tf.keras.layers.BatchNormalization()(conv3b)
+        conv3b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu3b')(conv3b)
 
-        conv4 = k.layers.ZeroPadding2D()(conv3b)
-        conv4 = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
-        conv4 = k.layers.BatchNormalization()(conv4)
-        conv4 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4')(conv4)
+        conv4 = tf.keras.layers.ZeroPadding2D()(conv3b)
+        conv4 = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
+        conv4 = tf.keras.layers.BatchNormalization()(conv4)
+        conv4 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu4')(conv4)
 
-        conv4b = k.layers.ZeroPadding2D()(conv4)
-        conv4b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
-        conv4b = k.layers.BatchNormalization()(conv4b)
-        conv4b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4b')(conv4b)
+        conv4b = tf.keras.layers.ZeroPadding2D()(conv4)
+        conv4b = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
+        conv4b = tf.keras.layers.BatchNormalization()(conv4b)
+        conv4b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu4b')(conv4b)
 
-        conv5a = k.layers.ZeroPadding2D()(conv4b)
-        conv5a = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
-        conv5a = k.layers.BatchNormalization()(conv5a)
-        conv5a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5a')(conv5a)
+        conv5a = tf.keras.layers.ZeroPadding2D()(conv4b)
+        conv5a = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
+        conv5a = tf.keras.layers.BatchNormalization()(conv5a)
+        conv5a = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu5a')(conv5a)
 
-        conv5b = k.layers.ZeroPadding2D()(conv5a)
-        conv5b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
-        conv5b = k.layers.BatchNormalization()(conv5b)
-        conv5b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5b')(conv5b)
+        conv5b = tf.keras.layers.ZeroPadding2D()(conv5a)
+        conv5b = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
+        conv5b = tf.keras.layers.BatchNormalization()(conv5b)
+        conv5b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu5b')(conv5b)
 
-        conv6 = k.layers.ZeroPadding2D()(conv5b)
-        conv6 = k.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
-        conv6 = k.layers.BatchNormalization()(conv6)
-        conv6 = k.layers.MaxPool2D(pool_size=(2, 3))(conv6)  # only difference in addition from original paper
+        conv6 = tf.keras.layers.ZeroPadding2D()(conv5b)
+        conv6 = tf.keras.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
+        conv6 = tf.keras.layers.BatchNormalization()(conv6)
+        conv6 = tf.keras.layers.MaxPool2D(pool_size=(2, 3))(conv6)  # only difference in addition from original paper
 
-        flat = k.layers.Flatten()(conv6)
+        flat = tf.keras.layers.Flatten()(conv6)
 
-        fc6 = k.layers.Dense(1024, activation='relu', name='fc6')(flat)
-        fc6_dropout = k.layers.Dropout(self.dropout)(fc6)
+        fc6 = tf.keras.layers.Dense(1024, activation='relu', name='fc6')(flat)
+        fc6_dropout = tf.keras.layers.Dropout(self.dropout)(fc6)
 
-        fc7 = k.layers.Dense(1024, activation='relu', name='fc7')(fc6_dropout)
-        fc7_dropout = k.layers.Dropout(self.dropout)(fc7)
+        fc7 = tf.keras.layers.Dense(1024, activation='relu', name='fc7')(fc6_dropout)
+        fc7_dropout = tf.keras.layers.Dropout(self.dropout)(fc7)
 
-        speed_prob = k.layers.Dense(self.num_buckets, activation='softmax')(fc7_dropout)
+        speed_prob = tf.keras.layers.Dense(self.num_buckets, activation='softmax')(fc7_dropout)
 
         return speed_prob
 
     def sparse_categorical_crossentropy(self, ys, y_pred):
         y_true = ys['label']
-        cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
     def mean_squared_error(self, ys, y_pred):
