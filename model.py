@@ -210,11 +210,8 @@ class DeepVO(object):
 
             model.compile(optimizer=self.optimizer,
                           loss=self.sparse_categorical_crossentropy,
-                          target_tensors=[
-                              {'label': train_data.label,
-                               'speed': train_data.speed}
-                          ],
-                          metrics=[self.categorical_accuracy, self.mean_squared_error]
+                          target_tensors=[train_data.speed],
+                          metrics=[self.categorical_accuracy, self.mean_squared_error],
                           )
             print(model.summary())
 
@@ -224,42 +221,42 @@ class DeepVO(object):
         conv1 = tf.keras.layers.ZeroPadding2D((3, 3))(model_input)
         conv1 = tf.keras.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
         conv1 = tf.keras.layers.BatchNormalization()(conv1)
-        conv1 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu1')(conv1)
+        conv1 = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu1')(conv1)
 
         conv2 = tf.keras.layers.ZeroPadding2D((2, 2))(conv1)
         conv2 = tf.keras.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
         conv2 = tf.keras.layers.BatchNormalization()(conv2)
-        conv2 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu2')(conv2)
+        conv2 = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu2')(conv2)
 
         conv3a = tf.keras.layers.ZeroPadding2D((2, 2))(conv2)
         conv3a = tf.keras.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
         conv3a = tf.keras.layers.BatchNormalization()(conv3a)
-        conv3a = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu3a')(conv3a)
+        conv3a = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu3a')(conv3a)
 
         conv3b = tf.keras.layers.ZeroPadding2D()(conv3a)
         conv3b = tf.keras.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
         conv3b = tf.keras.layers.BatchNormalization()(conv3b)
-        conv3b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu3b')(conv3b)
+        conv3b = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu3b')(conv3b)
 
         conv4 = tf.keras.layers.ZeroPadding2D()(conv3b)
         conv4 = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
         conv4 = tf.keras.layers.BatchNormalization()(conv4)
-        conv4 = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu4')(conv4)
+        conv4 = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu4')(conv4)
 
         conv4b = tf.keras.layers.ZeroPadding2D()(conv4)
         conv4b = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
         conv4b = tf.keras.layers.BatchNormalization()(conv4b)
-        conv4b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu4b')(conv4b)
+        conv4b = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu4b')(conv4b)
 
         conv5a = tf.keras.layers.ZeroPadding2D()(conv4b)
         conv5a = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
         conv5a = tf.keras.layers.BatchNormalization()(conv5a)
-        conv5a = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu5a')(conv5a)
+        conv5a = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu5a')(conv5a)
 
         conv5b = tf.keras.layers.ZeroPadding2D()(conv5a)
         conv5b = tf.keras.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
         conv5b = tf.keras.layers.BatchNormalization()(conv5b)
-        conv5b = tf.keras.layers.Lambda(lambda x: tf.keras.layers.activations.relu(x), name='relu5b')(conv5b)
+        conv5b = tf.keras.layers.Lambda(lambda x: tf.keras.activations.relu(x), name='relu5b')(conv5b)
 
         conv6 = tf.keras.layers.ZeroPadding2D()(conv5b)
         conv6 = tf.keras.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
@@ -278,32 +275,37 @@ class DeepVO(object):
 
         return speed_prob
 
-    def sparse_categorical_crossentropy(self, ys, y_pred):
-        y_true = ys['label']
-        cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
-        return cat_crossentropy_loss
-
-    def mean_squared_error(self, ys, y_pred):
-        y_true = ys['speed']
+    def mean_squared_error(self, y_true, y_pred):
         y_pred = tf.argmax(y_pred, -1)
         y_pred_fp = (tf.to_float(y_pred) + 0.5) * self.bucket_size
 
         return tf.reduce_mean(tf.square(y_true - y_pred_fp))
 
-    def categorical_accuracy(self, ys, y_pred):
-        y_true = ys['label']
+    def sparse_categorical_crossentropy(self, y, y_pred):
+        y_true = tf.to_int64(y) // self.bucket_size
+        cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return cat_crossentropy_loss
+
+    def categorical_accuracy(self, y, y_pred):
+        y_true = tf.to_int64(y) // self.bucket_size
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
+
+    def to_category(self, y):
+        return y // self.bucket_size
 
     def fit(self, train_data, valid_data):
         for i in range(20):
             self.model.fit(train_data.iter,
                            epochs=5,
-                           steps_per_epoch=20000//32,
-                           validation_data=[valid_data.img, valid_data.label] if valid_data else None,
+                           steps_per_epoch=20000 // 32,
+                           # validation_data=[valid_data.img,
+                           #                  {'speed': valid_data.speed,
+                           #                   'label': valid_data.label}
+                           #                  ] if valid_data else None,
                            validation_steps=62,
-                           callbacks=self.callbacks)
+                           callbacks=self.callbacks,)
             self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
 
 
