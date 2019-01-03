@@ -284,11 +284,13 @@ class DeepVO(object):
 
     def sparse_categorical_crossentropy(self, ys, y_pred):
         y_true = ys[0]
+        print(y_true, y_pred)
         cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
     def categorical_accuracy(self, ys, y_pred):
         y_true = ys[0]
+        print('here', y_true, y_pred)
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
