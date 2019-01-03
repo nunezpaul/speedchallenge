@@ -284,6 +284,7 @@ class DeepVO(object):
 
     def sparse_categorical_crossentropy(self, ys, y_pred):
         y_true = tf.clip_by_value(ys // self.bucket_size, 0, self.num_buckets - 1)
+        print(y_true)
         cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(
             tf.one_hot(y_true, self.num_buckets), y_pred)
         return cat_crossentropy_loss
