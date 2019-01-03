@@ -16,7 +16,8 @@ class DataBase(object):
         self.features = {
             'prev_img': tf.FixedLenFeature([], tf.string),
             'curr_img': tf.FixedLenFeature([], tf.string),
-            'label': tf.FixedLenFeature([], tf.float32)
+            'category': tf.FixedLenFeature([], tf.int64),
+            'speed': tf.FixedLenFeature([], tf.float32)
         }
 
         # Image crop dimensions
@@ -33,8 +34,8 @@ class DataBase(object):
         # dataset = dataset.shuffle(batch_size)
         dataset = dataset.prefetch(batch_size * 2)
         iterator = dataset.make_one_shot_iterator()
-        img, label = iterator.get_next()
-        return img, label, iterator
+        img, label, speed = iterator.get_next()
+        return img, label, speed, iterator
 
     def normalize_img(self, img):
         return (tf.to_float(img) - 225. / 2.) / 255.
@@ -53,7 +54,7 @@ class TrainData(DataBase):
 
         # Finish setting up the dataset
         filenames = [file.format(i) for i in range(num_shards)]
-        self.img, self.label, self.iter = self.setup_dataset_iter(filenames, batch_size, self._parse_function)
+        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, batch_size, self._parse_function)
         self.img = tf.reshape(self.img, (-1, 300, 640, 6))
 
     def _parse_function(self, example_proto):
@@ -96,10 +97,7 @@ class TrainData(DataBase):
         #                                                     self.num_channels],
         #                                              )
 
-        label = output['label']
-        cat_label = tf.to_int64(label)
-
-        return stacked_img, cat_label
+        return stacked_img, output['category'], output['speed']
 
     # This section determines which random function for data augmentation is applied while training
     def _true_fn_l1(self, img, val):
@@ -149,7 +147,7 @@ class ValidData(DataBase):
         self.crop_y_top = 50
 
         # Finish setting up the dataset iterator
-        self.img, self.label, self.iter = self.setup_dataset_iter([file], batch_size, self._parse_function)
+        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], batch_size, self._parse_function)
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
@@ -166,10 +164,7 @@ class ValidData(DataBase):
         stacked_img = tf.concat([prev_img, curr_img], axis=-1)
         stacked_img = self.normalize_img(stacked_img)
 
-        label = output['label']
-        cat_label = tf.to_int64(label)
-
-        return stacked_img, cat_label
+        return stacked_img, tf.clip_by_value(output['category'], 0, 9), output['speed']
     
 
 class DeepVO(object):
@@ -215,9 +210,12 @@ class DeepVO(object):
             model = k.models.Model(inputs=model_input, outputs=model_output)
 
             model.compile(optimizer=self.optimizer,
-                          loss='sparse_categorical_crossentropy',
-                          target_tensors=[train_data.label],
-                          metrics=[self.categorical_accuracy, self.mse_metric]
+                          loss=self.sparse_categorical_crossentropy,
+                          target_tensors=[
+                              {'label': train_data.label,
+                               'speed': train_data.speed}
+                          ],
+                          metrics=[self.categorical_accuracy, self.mean_squared_error]
                           )
             print(model.summary())
 
@@ -281,14 +279,20 @@ class DeepVO(object):
 
         return speed_prob
 
-    def mse_metric(self, y_true, y_pred):
+    def sparse_categorical_crossentropy(self, ys, y_pred):
+        y_true = ys['label']
+        cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return cat_crossentropy_loss
+
+    def mean_squared_error(self, ys, y_pred):
+        y_true = ys['speed']
         y_pred = tf.argmax(y_pred, -1)
-        y_true_fp = (tf.to_float(y_true) + 0.5) * self.bucket_size
         y_pred_fp = (tf.to_float(y_pred) + 0.5) * self.bucket_size
 
-        return tf.reduce_mean(tf.square(y_true_fp - y_pred_fp))
+        return tf.reduce_mean(tf.square(y_true - y_pred_fp))
 
-    def categorical_accuracy(self, y_true, y_pred):
+    def categorical_accuracy(self, ys, y_pred):
+        y_true = ys['label']
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
@@ -306,6 +310,8 @@ class DeepVO(object):
 
 if __name__ == '__main__':
     config = Config()
-    train_data = TrainData('data/train_tfrecords/image_value_pairs_{}.tfrecord', num_shards=10, batch_size=32)
-    valid_data = ValidData('data/val_tfrecords/val_image_value_pairs.tfrecord', batch_size=32)
+    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32)
+
     deep_vo = DeepVO(train_data=train_data, **config.params)
+    deep_vo.fit(train_data=train_data, valid_data=valid_data)
