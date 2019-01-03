@@ -284,13 +284,11 @@ class DeepVO(object):
 
     def sparse_categorical_crossentropy(self, ys, y_pred):
         y_true = tf.clip_by_value(ys // self.bucket_size, 0, self.num_buckets - 1)
-        print(y_true, y_pred)
         cat_crossentropy_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
     def categorical_accuracy(self, ys, y_pred):
         y_true = tf.clip_by_value(ys // self.bucket_size, 0, self.num_buckets - 1)
-        print('here', y_true, y_pred)
         y_pred = tf.argmax(y_pred, -1)
         same_cat = tf.equal(tf.to_int64(y_true), y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
@@ -300,9 +298,7 @@ class DeepVO(object):
             self.model.fit(
                            epochs=5,
                            steps_per_epoch=20000 // 32,
-                           validation_data=[valid_data.img,
-                                            [valid_data.speed, valid_data.label]
-                                            ] if valid_data else None,
+                           validation_data=[valid_data.img, valid_data.speed] if valid_data else None,
                            validation_steps=63,
                            callbacks=self.callbacks,)
             self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
