@@ -88,8 +88,8 @@ class DeepVO(object):
         return cat_crossentropy_loss
 
     def categorical_accuracy(self, y_true, y_pred):
-        y_pred = tf.argmax(y_pred, -1, output_type=tf.int64)
-        same_cat = tf.equal(y_true, y_pred)
+        y_pred = tf.argmax(y_pred, -1, output_type=tf.int32)
+        same_cat = tf.equal(tf.to_int32(y_true), y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
 
     def mean_squared_error(self, y_true, y_pred):
