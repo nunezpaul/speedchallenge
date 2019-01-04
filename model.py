@@ -84,8 +84,8 @@ class DeepVO(object):
         return model
 
     def mean_squared_error(self, y_true, y_pred):
-        speed = self.convert_to_speed(y_true)
-        return k.losses.mean_squared_error(speed, y_pred)
+        speed = self.convert_to_speed(y_pred)
+        return k.losses.mean_squared_error(y_true, speed)
 
     def convert_to_speed(self, category_output):
         category = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
