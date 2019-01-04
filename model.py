@@ -12,10 +12,11 @@ from pandas import DataFrame
 class DeepVO(object):
     def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir, **kwargs):
         self.uuid = uuid.uuid4()
-        self.save_dir = save_dir if save_dir else ''
+        self.save_dir = save_dir if save_dir else './'
         self.load_model = load_model
         self.dropout = dropout
         self.bucket_size = bucket_size
+        self.bucket_size_tf = tf.constant(self.bucket_size, dtype=tf.float32, shape=(1, 1))
         self.num_buckets = 30 // bucket_size
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
@@ -42,7 +43,7 @@ class DeepVO(object):
 
     def setup_callbacks(self):
         callbacks = []
-        tensorboard = k.callbacks.TensorBoard(log_dir=f'{self.save_dir}/log/{self.uuid}',
+        tensorboard = k.callbacks.TensorBoard(log_dir=f'{self.save_dir}log/{self.uuid}',
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)
@@ -142,7 +143,9 @@ class DeepVO(object):
         return category_output, speed_output
 
     def convert_to_speed(self, category_output):
-        return tf.multiply(tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5, self.bucket_size)
+        speed_output = k.backend.cast(k.backend.argmax(category_output), dtype=tf.float32) + 0.5
+        speed_output = k.layers.multiply([speed_output, self.bucket_size_tf], name='speed')
+        return speed_output
 
     def fit(self, epochs, train_data, valid_data=None):
         if valid_data:
@@ -169,8 +172,11 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive')
 
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=2000)
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+    # train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=2000)
+    # valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+
+    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=64)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=32 * 3)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
