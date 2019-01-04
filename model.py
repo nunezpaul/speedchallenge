@@ -66,10 +66,10 @@ class DeepVO(object):
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
-        losses = {'category': 'sparse_categorical_crossentropy',
-                  'speed': self.mean_squared_error}
-        loss_weights = {'category': 1.0, 'speed': 0.1}
-        metrics = {'category': 'categorical_accuracy'}
+        losses = {'category': 'sparse_categorical_crossentropy'}
+        loss_weights = {'category': 1.0}
+        metrics = {'category': 'categorical_accuracy',
+                   'speed': self.mean_squared_error}
 
         model.compile(optimizer=self.optimizer,
                       loss=losses,
