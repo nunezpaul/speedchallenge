@@ -5,12 +5,15 @@ import keras as k
 import tensorflow as tf
 
 from config import Config
-
-# tf.enable_eager_execution()
+# from datasets import TrainData, ValidData
 
 
 class DataBase(object):
-    def __init__(self):
+    def __init__(self, len, batch_size):
+        # Save information about the dataset for processing later.
+        self.len = len
+        self.batch_size = batch_size
+
         # Feature dictionary to pull from TFRecord.
         self.features = {
             'prev_img': tf.FixedLenFeature([], tf.string),
@@ -26,23 +29,28 @@ class DataBase(object):
         # Combined total num channels
         self.num_channels = 6
 
-    def setup_dataset_iter(self, filenames, batch_size, _parse_function):
+    def __len__(self):
+        return self.len
+
+    def setup_dataset_iter(self, filenames, _parse_function):
         dataset = tf.data.TFRecordDataset(filenames)
         dataset = dataset.map(_parse_function)
-        dataset = dataset.repeat().batch(batch_size)
+        dataset = dataset.repeat().batch(self.batch_size)
         # dataset = dataset.shuffle(batch_size)
-        dataset = dataset.prefetch(batch_size * 2)
+        dataset = dataset.prefetch(self.batch_size * 2)
         iterator = dataset.make_one_shot_iterator()
-        img, label, speed = iterator.get_next()
-        return img, label, speed, iterator
+        # Output will be img, label and speed for train and val data but just img for test data
+        get_next_output = list(iterator.get_next())
+        return get_next_output + [iterator]
 
     def normalize_img(self, img):
         return (tf.to_float(img) - 225. / 2.) / 255.
 
 
 class TrainData(DataBase):
-    def __init__(self, file, num_shards, batch_size):
-        super(TrainData, self).__init__()
+    def __init__(self, file, num_shards, batch_size, len):
+        self.len = len
+        super(TrainData, self).__init__(batch_size=batch_size, len=len)
 
         # Online data augmentation values
         self.max_random_hue_delta = 0.2
@@ -53,7 +61,7 @@ class TrainData(DataBase):
 
         # Finish setting up the dataset
         filenames = [file.format(i) for i in range(num_shards)]
-        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, batch_size, self._parse_function)
+        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, self._parse_function)
         self.img = tf.reshape(self.img, (-1, 300, 640, 6))
 
     def _parse_function(self, example_proto):
@@ -96,7 +104,7 @@ class TrainData(DataBase):
         #                                                     self.num_channels],
         #                                              )
 
-        return stacked_img, output['category'], output['speed']
+        return [stacked_img, output['category'], output['speed']]
 
     # This section determines which random function for data augmentation is applied while training
     def _true_fn_l1(self, img, val):
@@ -139,14 +147,11 @@ class TrainData(DataBase):
                        lambda: img)  # if val is 5
 
 
-class ValidData(DataBase):
-    def __init__(self, file, batch_size):
-        super(ValidData, self).__init__()
+class NonTrainData(DataBase):
+    def __init__(self, batch_size, len):
+        super(NonTrainData, self).__init__(batch_size=batch_size, len=len)
         self.crop_x_left = 0
         self.crop_y_top = 50
-
-        # Finish setting up the dataset iterator
-        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], batch_size, self._parse_function)
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
@@ -163,11 +168,35 @@ class ValidData(DataBase):
         stacked_img = tf.concat([prev_img, curr_img], axis=-1)
         stacked_img = self.normalize_img(stacked_img)
 
-        return stacked_img, tf.clip_by_value(output['category'], 0, 9), output['speed']
-    
+        labels = []
+        if 'category' in output:
+            category = tf.clip_by_value(output['category'], 0, 9)
+            labels += [category, output['speed']]
+
+        return [stacked_img] + labels
+
+
+class ValidData(NonTrainData):
+    def __init__(self, file, batch_size, len):
+        super(ValidData, self).__init__(batch_size=batch_size, len=len)
+        # Finish setting up the dataset iterator
+        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], self._parse_function)
+
+
+class TestData(NonTrainData):
+    def __init__(self, file, batch_size, len):
+        super(TestData, self).__init__(batch_size=batch_size, len=len)
+
+        # Feature dictionary to pull from TFRecord.
+        self.features = {
+            'prev_img': tf.FixedLenFeature([], tf.string),
+            'curr_img': tf.FixedLenFeature([], tf.string),
+        }
+        self.img, self.iter = self.setup_dataset_iter([file], self._parse_function)
+
 
 class DeepVO(object):
-    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir):
+    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir, **kwargs):
         self.uuid = uuid.uuid4()
         self.save_dir = save_dir if save_dir else ''
         self.load_model = load_model
@@ -178,7 +207,7 @@ class DeepVO(object):
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
 
-        #convert model to tpu model
+        # Convert model to tpu model
         if tpu:
             tpu_worker = 'grpc://' + os.environ['COLAB_TPU_ADDR']
             strategy = tf.contrib.tpu.TPUDistributionStrategy(
@@ -314,21 +343,20 @@ class DeepVO(object):
         same_cat = tf.equal(y_true, y_pred)
         return tf.reduce_mean(tf.to_float(same_cat))
 
-    def fit(self, train_data, valid_data):
-        validation_data = [valid_data.img, {'label': valid_data.label,
-                                            'speed': valid_data.speed}] if valid_data else None
-        for i in range(20):
-            self.model.fit(train_data.iter,
-                           epochs=5,
-                           steps_per_epoch=20000 // 32,
-                           validation_data=validation_data if not self.load_model else None,
-                           validation_steps=62,
-                           callbacks=self.callbacks)
-            self.model.save(self.save_dir + f'speed_model_{self.optimizer}_{i}.h5')
+    def fit(self, epochs, train_data, valid_data):
+        validation_data = [valid_data.img, valid_data.speed] if valid_data else None
+        self.model.fit(train_data.iter,
+                       epochs=epochs,
+                       steps_per_epoch=train_data.len // train_data.batch_size,
+                       validation_data=validation_data if not self.load_model else None,
+                       validation_steps=valid_data.len // valid_data.batch_size,
+                       callbacks=self.callbacks)
 
-    def predict(self, data):
-        prediction = self.model.predict(data.img, steps=63)
-        return prediction
+    def predict(self, data, save_dir):
+        prediction_logits = self.model.predict(data.img, steps=data.len // data.batch_size + 1)
+        prediction = prediction_logits.argmax(-1)
+        prediction = prediction[:data.len]
+        prediction.tofile((save_dir if save_dir else '') + 'prediction.txt', sep='\n')
 
 
 if __name__ == '__main__':
@@ -336,14 +364,15 @@ if __name__ == '__main__':
     if config.params['save_dir']:
         from google.colab import drive
         drive.mount('gdrive')
-    
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32)
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32)
+
+    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+    test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
-    prediction = deep_vo.predict(valid_data)
-    print(prediction)
-    print(dir(prediction))
+    # prediction = deep_vo.predict(valid_data)
+    # prediction.tofile(config.params['save_dir'] + 'prediction.txt')
+    #
+    deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
 
-    deep_vo.fit(train_data=train_data, valid_data=valid_data)
