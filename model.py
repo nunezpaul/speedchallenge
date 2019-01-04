@@ -135,6 +135,9 @@ class DeepVO(object):
         return speed_prob
 
     def fit(self, epochs, train_data, valid_data=None):
+        print('first')
+        print(valid_data.speed, valid_data.label)
+        print('second')
         self.model.fit(train_data.img, train_data.speed,
                        epochs=epochs,
                        steps_per_epoch=train_data.len // train_data.batch_size,
