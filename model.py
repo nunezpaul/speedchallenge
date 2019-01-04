@@ -68,7 +68,7 @@ class DeepVO(object):
 
         losses = {'category': self.sparse_categorical_crossentropy}
         loss_weights = {'category': 1.0}
-        metrics = {'category': k.metrics.sparse_categorical_crossentropy,
+        metrics = {'category': k.metrics.sparse_categorical_accuracy,
                    'speed': self.mean_squared_error}
 
         model.compile(optimizer=self.optimizer,
