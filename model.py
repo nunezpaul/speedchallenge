@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from config import Config
 from datasets import TrainData, ValidData
+from pandas import DataFrame
 
 
 class DeepVO(object):
@@ -160,16 +161,15 @@ class DeepVO(object):
         validation_data = [valid_data.img, valid_data.speed] if valid_data else None
         self.model.fit(train_data.iter,
                        epochs=epochs,
-                       steps_per_epoch=train_data.len * train_data.s // train_data.batch_size,
+                       steps_per_epoch=train_data.len // train_data.batch_size,
                        validation_data=validation_data if not self.load_model else None,
                        validation_steps=valid_data.len // valid_data.batch_size,
                        callbacks=self.callbacks)
 
     def predict(self, data, save_dir):
         prediction_logits = self.model.predict(data.img, steps=data.len // data.batch_size + 1)
-        prediction = prediction_logits.argmax(-1)
-        prediction = prediction[:data.len]
-        prediction.tofile((save_dir if save_dir else '') + 'prediction.txt', sep='\n')
+        prediction = DataFrame(prediction_logits)
+        prediction.to_csv((save_dir if save_dir else '') + 'prediction.txt')
 
 
 if __name__ == '__main__':
@@ -187,4 +187,3 @@ if __name__ == '__main__':
     # prediction.tofile(config.params['save_dir'] + 'prediction.txt')
     #
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
-
