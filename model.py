@@ -42,7 +42,7 @@ class DeepVO(object):
 
     def setup_callbacks(self):
         callbacks = []
-        tensorboard = k.callbacks.TensorBoard(log_dir=f'./log/{self.uuid}',
+        tensorboard = k.callbacks.TensorBoard(log_dir=f'{self.save_dir}/log/{self.uuid}',
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)

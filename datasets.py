@@ -31,7 +31,7 @@ class DataBase(object):
         dataset = dataset.map(_parse_function)
         dataset = dataset.repeat().batch(self.batch_size)
         # dataset = dataset.shuffle(batch_size)
-        dataset = dataset.prefetch(self.batch_size * 2)
+        dataset = dataset.prefetch(self.batch_size)
         iterator = dataset.make_one_shot_iterator()
         # Output will be img, label and speed for train and val data but just img for test data
         get_next_output = list(iterator.get_next())
