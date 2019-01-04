@@ -14,4 +14,4 @@ if __name__ == '__main__':
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
-    prediction = deep_vo.predict(valid_data)
+    prediction = deep_vo.predict(valid_data, save_dir=config.params['save_dir'])
