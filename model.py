@@ -65,9 +65,15 @@ class DeepVO(object):
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
+        losses = {'category': 'sparse_categorical_crossentropy',
+                  'speed': 'mean_squared_error'}
+        loss_weights = {'category': 1.0, 'speed': 0.0}
+        metrics = {'category': 'categorical_accuracy'}
+
         model.compile(optimizer=self.optimizer,
-                      loss=self.sparse_categorical_crossentropy,
-                      metrics=[self.categorical_accuracy, ])  # self.mean_squared_error])
+                      loss=losses,
+                      loss_weights=loss_weights,
+                      metrics=metrics)
         model.summary()
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
@@ -130,15 +136,23 @@ class DeepVO(object):
         fc7 = k.layers.Dense(1024, activation='relu', name='fc7')(fc6_dropout)
         fc7_dropout = k.layers.Dropout(self.dropout)(fc7)
 
-        speed_prob = k.layers.Dense(self.num_buckets, activation='softmax')(fc7_dropout)
+        category_output = k.layers.Dense(self.num_buckets, activation='softmax', name='category')(fc7_dropout)
+        speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x), name='speed')(category_output)
+        print(speed_output)
+        return category_output, speed_output
 
-        return speed_prob
+    def convert_to_speed(self, category_output):
+        speed_output = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
+        speed_output = tf.multiply(speed_output, self.bucket_size)
+        return speed_output
 
     def fit(self, epochs, train_data, valid_data=None):
-        self.model.fit(train_data.img, train_data.speed,
+        if valid_data:
+            validation_data = [valid_data.img, {'category': valid_data.label, 'speed': valid_data.speed}]
+        self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
                        epochs=epochs,
                        steps_per_epoch=train_data.len // train_data.batch_size,
-                       validation_data=[valid_data.img, valid_data.speed] if valid_data else None,
+                       validation_data=validation_data if valid_data else None,
                        validation_steps=valid_data.len // valid_data.batch_size if valid_data else None,
                        callbacks=self.callbacks)
 
