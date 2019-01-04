@@ -143,7 +143,7 @@ class DeepVO(object):
         return category_output, speed_output
 
     def convert_to_speed(self, category_output):
-        category = tf.to_float(tf.argmax(category_output)) + 0.5
+        category = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
         speed_output = tf.multiply(category, self.bucket_size)
         return speed_output
 
