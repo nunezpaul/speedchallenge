@@ -67,7 +67,7 @@ class DeepVO(object):
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
         losses = {'category': 'sparse_categorical_crossentropy',
-                  'speed': 'mean_squared_error'}
+                  'speed': self.mean_squared_error}
         loss_weights = {'category': 1.0, 'speed': 0.0}
         metrics = {'category': 'categorical_accuracy'}
 
@@ -82,6 +82,15 @@ class DeepVO(object):
             print(f'Successfully reloaded pretrained {self.load_model} model!')
 
         return model
+
+    def mean_squared_error(self, y_true, y_pred):
+        speed = self.convert_to_speed(y_true)
+        return k.losses.mean_squared_error(speed, y_pred)
+
+    def convert_to_speed(self, category_output):
+        category = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
+        speed_output = tf.multiply(category, self.bucket_size)
+        return speed_output
 
     def cnn(self, model_input):
         conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
@@ -138,14 +147,9 @@ class DeepVO(object):
         fc7_dropout = k.layers.Dropout(self.dropout)(fc7)
 
         category_output = k.layers.Dense(self.num_buckets, activation='softmax', name='category')(fc7_dropout)
-        speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x), name='speed')(category_output)
+        speed_output = k.layers.Lambda(lambda x: x, name='speed')(category_output)
 
         return category_output, speed_output
-
-    def convert_to_speed(self, category_output):
-        category = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
-        speed_output = tf.multiply(category, self.bucket_size)
-        return speed_output
 
     def fit(self, epochs, train_data, valid_data=None):
         if valid_data:
@@ -170,7 +174,7 @@ if __name__ == '__main__':
     config = Config()
     if config.params['save_dir']:
         from google.colab import drive
-        drive.mount('gdrive')
+        drive.mount('gdrive', force_remount=False)
 
     # train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=2000)
     # valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
