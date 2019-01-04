@@ -171,7 +171,7 @@ class DeepVO(object):
         for step in range(data.len // data.batch_size + 1):
             prediction_logits = self.model.predict(data.img, steps=1)
             prediction = DataFrame(prediction_logits)
-            prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a')
+            prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a', header=step==0)
             print(step)
 
 
