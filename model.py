@@ -167,12 +167,12 @@ class DeepVO(object):
                        callbacks=self.callbacks)
 
     def predict(self, data, save_dir):
-        with open((save_dir if save_dir else './', 'w+') + 'prediction.txt') as f:
-            for step in range(data.len // data.batch_size + 1):
-                prediction_logits = self.model.predict(data.img, steps=1)
-                prediction = DataFrame(prediction_logits)
-                prediction.to_csv(f, index=False, mode='w' if step == 0 else 'a')
-                print(_)
+        filepath = (save_dir if save_dir else './') + 'prediction.txt'
+        for step in range(data.len // data.batch_size + 1):
+            prediction_logits = self.model.predict(data.img, steps=1)
+            prediction = DataFrame(prediction_logits)
+            prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a')
+            print(step)
 
 
 if __name__ == '__main__':
