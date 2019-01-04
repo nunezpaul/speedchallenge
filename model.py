@@ -46,7 +46,7 @@ class DeepVO(object):
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)
-        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + '{epoch:02d}-{val_loss:.2f}.hdf5',
+        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + 'models/{epoch:02d}-{val_loss:.2f}.hdf5',
                                                  monitor='val_loss',
                                                  verbose=0,
                                                  save_best_only=True,
