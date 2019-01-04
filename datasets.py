@@ -21,6 +21,7 @@ class DataBase(object):
 
         # Combined total num channels
         self.num_channels = 6
+        self.img_shape = (self.batch_size, self.crop_height, self.crop_width, self.num_channels)
 
     def __len__(self):
         return self.len
@@ -36,7 +37,9 @@ class DataBase(object):
         get_next_output = list(iterator.get_next())
 
         # First position will always be the image. Reshaping here.
-        get_next_output[0] = tf.reshape(get_next_output[0], (-1, self.crop_height, self.crop_width, self.num_channels))
+        get_next_output[0] = tf.reshape(get_next_output[0], self.img_shape)
+        for i in range(1, len(get_next_output)):
+            get_next_output[i] = tf.reshape(get_next_output[i], (self.batch_size,))
         return get_next_output + [iterator]
 
     def normalize_img(self, img):
@@ -57,7 +60,6 @@ class TrainData(DataBase):
         # Finish setting up the dataset
         filenames = [file.format(i) for i in range(num_shards)]
         self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, self._parse_function)
-        # self.img = tf.reshape(self.img, (-1, 300, 640, 6))
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
@@ -175,7 +177,7 @@ class ValidData(NonTrainData):
     def __init__(self, file, batch_size, len):
         super(ValidData, self).__init__(batch_size=batch_size, len=len)
         # Finish setting up the dataset iterator
-        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], self._parse_function)
+        self.img, self.speed, self.label, self.iter = self.setup_dataset_iter([file], self._parse_function)
 
 
 class TestData(NonTrainData):
@@ -196,4 +198,15 @@ if __name__ == '__main__':
     test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
 
     for data in (train_data, valid_data, test_data):
-        assert data.img.shape[1:] == (train_data.crop_height, train_data.crop_width, train_data.num_channels)
+        # check image size
+        print(data.img.shape, data.img_shape)
+        assert data.img.shape == (data.batch_size, data.crop_height, data.crop_width, data.num_channels)
+
+    for data in (train_data, valid_data):
+        # check category size
+        print(data.label.shape)
+        assert data.label.shape == (data.batch_size,)
+
+        # check speed size
+        print(data.speed.shape)
+        assert data.speed.shape == (data.batch_size,)

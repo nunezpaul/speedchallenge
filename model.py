@@ -61,19 +61,14 @@ class DeepVO(object):
         return callbacks
 
     def setup_model(self, train_data):
-        model_input = k.layers.Input(tensor=train_data.img)
+        model_input = k.layers.Input(shape=train_data.img_shape[1:])
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
         model.compile(optimizer=self.optimizer,
                       loss=self.sparse_categorical_crossentropy,
-                      target_tensors=[
-                          {'label': train_data.label,
-                           'speed': train_data.speed}
-                      ],
-                      metrics=[self.categorical_accuracy, self.mean_squared_error]
-                      )
-        print(model.summary())
+                      metrics=[self.categorical_accuracy, self.mean_squared_error])
+        model.summary()
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
             model.load_weights(self.load_model)
@@ -139,32 +134,31 @@ class DeepVO(object):
 
         return speed_prob
 
-    def sparse_categorical_crossentropy(self, ys, y_pred):
-        y_true = ys['label']
+    def fit(self, epochs, train_data, valid_data=None):
+        self.model.fit(train_data.img, train_data.speed,
+                       epochs=epochs,
+                       steps_per_epoch=train_data.len // train_data.batch_size,
+                       validation_data=[valid_data.img, valid_data.speed] if valid_data else None,
+                       validation_steps=valid_data.len // valid_data.batch_size if valid_data else None,
+                       callbacks=self.callbacks)
+
+    def sparse_categorical_crossentropy(self, y_speed, y_pred):
+        y_true = self.bucket_speed(y_speed)
         cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
 
-    def mean_squared_error(self, ys, y_pred):
-        y_true = ys['speed']
+    def mean_squared_error(self, y_speed, y_pred):
+        y_cat = tf.argmax(y_pred, -1)
+        y_cat_speed = (tf.to_float(y_cat) + 0.5) * self.bucket_size
+        return k.losses.mean_squared_error(y_speed, y_cat_speed)
+
+    def categorical_accuracy(self, y_speed, y_pred):
+        y_true = self.bucket_speed(y_speed)
         y_pred = tf.argmax(y_pred, -1)
-        y_pred_fp = (tf.to_float(y_pred) + 0.5) * self.bucket_size
+        return k.metrics.categorical_accuracy(y_true, y_pred)
 
-        return tf.reduce_mean(tf.square(y_true - y_pred_fp))
-
-    def categorical_accuracy(self, ys, y_pred):
-        y_true = ys['label']
-        y_pred = tf.argmax(y_pred, -1)
-        same_cat = tf.equal(y_true, y_pred)
-        return tf.reduce_mean(tf.to_float(same_cat))
-
-    def fit(self, epochs, train_data, valid_data):
-        validation_data = [valid_data.img, valid_data.speed] if valid_data else None
-        self.model.fit(train_data.iter,
-                       epochs=epochs,
-                       steps_per_epoch=train_data.len // train_data.batch_size,
-                       validation_data=validation_data if not self.load_model else None,
-                       validation_steps=valid_data.len // valid_data.batch_size,
-                       callbacks=self.callbacks)
+    def bucket_speed(self, y_true):
+        return tf.clip_by_value(y_true // self.bucket_size, 0, self.num_buckets)
 
     def predict(self, data, save_dir):
         filepath = (save_dir if save_dir else './') + 'prediction.txt'
@@ -185,8 +179,4 @@ if __name__ == '__main__':
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
-
-    # prediction = deep_vo.predict(valid_data)
-    # prediction.tofile(config.params['save_dir'] + 'prediction.txt')
-    #
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
