@@ -48,7 +48,8 @@ class DeepVO(object):
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)
-        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + 'models/{epoch:02d}-{val_loss:.2f}.hdf5',
+        model_path = 'models/{epoch:02d}_{val_loss:.2f}' + '_{uuid}.hdf5'.format(uuid=self.uuid)
+        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + model_path,
                                                  monitor='val_loss',
                                                  verbose=0,
                                                  save_best_only=True,
@@ -67,7 +68,7 @@ class DeepVO(object):
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
-        losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': self.mean_squared_error}
+        losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': k.losses.mean_squared_error}
         loss_weights = {'category': 1.0, 'speed': 0.0}
         metrics = {'category': k.metrics.sparse_categorical_accuracy,
                    'speed': k.losses.mean_squared_error}
