@@ -150,7 +150,7 @@ class DeepVO(object):
     def mean_squared_error(self, y_speed, y_pred):
         y_cat = tf.argmax(y_pred, -1)
         y_cat_speed = (tf.to_float(y_cat) + 0.5) * self.bucket_size
-        return k.losses.mean_squared_error(y_speed, y_cat_speed)
+        return tf.reduce_mean(tf.squared_difference(y_cat_speed, y_speed))
 
     def categorical_accuracy(self, y_speed, y_pred):
         y_true = self.bucket_speed(y_speed)
