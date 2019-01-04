@@ -138,13 +138,11 @@ class DeepVO(object):
 
         category_output = k.layers.Dense(self.num_buckets, activation='softmax', name='category')(fc7_dropout)
         speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x), name='speed')(category_output)
-        print(speed_output)
+
         return category_output, speed_output
 
     def convert_to_speed(self, category_output):
-        speed_output = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
-        speed_output = tf.multiply(speed_output, self.bucket_size)
-        return speed_output
+        return tf.multiply(tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5, self.bucket_size)
 
     def fit(self, epochs, train_data, valid_data=None):
         if valid_data:
@@ -155,25 +153,6 @@ class DeepVO(object):
                        validation_data=validation_data if valid_data else None,
                        validation_steps=valid_data.len // valid_data.batch_size if valid_data else None,
                        callbacks=self.callbacks)
-
-    def sparse_categorical_crossentropy(self, y_speed, y_pred):
-        y_true = self.bucket_speed(y_speed)
-        cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
-        return cat_crossentropy_loss
-
-    def mean_squared_error(self, y_speed, y_pred):
-        print(y_speed, y_pred)
-        y_cat = tf.argmax(y_pred, -1)
-        y_cat_speed = tf.to_float((tf.to_float(y_cat) + 0.5) * self.bucket_size)
-        return k.losses.mean_squared_error(y_speed, y_cat_speed)
-
-    def categorical_accuracy(self, y_speed, y_pred):
-        y_true = self.bucket_speed(y_speed)
-        y_pred = tf.argmax(y_pred, -1)
-        return k.metrics.categorical_accuracy(y_true, y_pred)
-
-    def bucket_speed(self, y_true):
-        return tf.clip_by_value(y_true // self.bucket_size, 0, self.num_buckets)
 
     def predict(self, data, save_dir):
         filepath = (save_dir if save_dir else './') + 'prediction.txt'
@@ -190,7 +169,7 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive')
 
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
+    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=2000)
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
