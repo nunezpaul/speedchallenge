@@ -68,7 +68,7 @@ class DeepVO(object):
 
         losses = {'category': self.sparse_categorical_crossentropy}
         loss_weights = {'category': 1.0}
-        metrics = {'category': self.categorical_accuracy,
+        metrics = {'category': k.metrics.sparse_categorical_crossentropy,
                    'speed': self.mean_squared_error}
 
         model.compile(optimizer=self.optimizer,
@@ -86,11 +86,6 @@ class DeepVO(object):
     def sparse_categorical_crossentropy(self, y_true, y_pred):
         cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
         return cat_crossentropy_loss
-
-    def categorical_accuracy(self, y_true, y_pred):
-        y_pred = tf.argmax(y_pred, -1, output_type=tf.int32)
-        same_cat = tf.equal(tf.to_int32(y_true), y_pred)
-        return tf.reduce_mean(tf.to_float(same_cat))
 
     def mean_squared_error(self, y_true, y_pred):
         speed = self.convert_to_speed(y_pred)
