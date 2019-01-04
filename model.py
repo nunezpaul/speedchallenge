@@ -138,14 +138,13 @@ class DeepVO(object):
         fc7_dropout = k.layers.Dropout(self.dropout)(fc7)
 
         category_output = k.layers.Dense(self.num_buckets, activation='softmax', name='category')(fc7_dropout)
-        speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x),
-                                       name='speed', arguments={'k': k, 'tf': tf})(category_output)
+        speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x), name='speed')(category_output)
 
         return category_output, speed_output
 
     def convert_to_speed(self, category_output):
-        speed_output = k.backend.cast(k.backend.argmax(category_output), dtype=tf.float32) + 0.5
-        speed_output = k.layers.multiply([speed_output, self.bucket_size_tf], name='speed')
+        category = tf.to_float(tf.argmax(category_output)) + 0.5
+        speed_output = tf.multiply(category, self.bucket_size)
         return speed_output
 
     def fit(self, epochs, train_data, valid_data=None):
