@@ -23,6 +23,7 @@ class DeepVO(object):
         self.model = self.setup_model(train_data)
 
         # Convert model to tpu model
+        # TODO: Fix the model so it works with TPU
         if tpu:
             tpu_worker = 'grpc://' + os.environ['COLAB_TPU_ADDR']
             strategy = tf.contrib.tpu.TPUDistributionStrategy(
@@ -66,14 +67,14 @@ class DeepVO(object):
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
-        losses = {'category': self.sparse_categorical_crossentropy}
-        loss_weights = {'category': 1.0}
+        losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': self.mean_squared_error}
+        loss_weights = {'category': 1.0, 'speed': 0.0}
         metrics = {'category': k.metrics.sparse_categorical_accuracy,
-                   'speed': self.mean_squared_error}
+                   'speed': k.losses.mean_squared_error}
 
         model.compile(optimizer=self.optimizer,
                       loss=losses,
-                      # loss_weights=loss_weights,
+                      loss_weights=loss_weights,
                       metrics=metrics)
         model.summary()
         if self.load_model:
