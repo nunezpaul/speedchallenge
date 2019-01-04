@@ -177,7 +177,7 @@ class ValidData(NonTrainData):
     def __init__(self, file, batch_size, len):
         super(ValidData, self).__init__(batch_size=batch_size, len=len)
         # Finish setting up the dataset iterator
-        self.img, self.speed, self.label, self.iter = self.setup_dataset_iter([file], self._parse_function)
+        self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], self._parse_function)
 
 
 class TestData(NonTrainData):
