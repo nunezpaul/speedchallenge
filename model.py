@@ -21,7 +21,6 @@ class DeepVO(object):
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
-        self.make_save_dirs()
 
         # Convert model to tpu model
         # TODO: Fix the model so it works with TPU
@@ -191,7 +190,7 @@ if __name__ == '__main__':
 
     # train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
     # valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
-    
+
     train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=1, batch_size=32, len=32*2)
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=32)
 
