@@ -148,9 +148,9 @@ class DeepVO(object):
         return cat_crossentropy_loss
 
     def mean_squared_error(self, y_speed, y_pred):
+        print(y_speed, y_pred)
         y_cat = tf.argmax(y_pred, -1)
-        y_cat_speed = (tf.to_float(y_cat) + 0.5) * self.bucket_size
-        print(y_cat_speed, y_speed)
+        y_cat_speed = tf.to_float((tf.to_float(y_cat) + 0.5) * self.bucket_size)
         return tf.squared_difference(y_cat_speed, y_speed)
 
     def categorical_accuracy(self, y_speed, y_pred):
