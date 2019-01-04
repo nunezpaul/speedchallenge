@@ -135,9 +135,6 @@ class DeepVO(object):
         return speed_prob
 
     def fit(self, epochs, train_data, valid_data=None):
-        print('first')
-        print(valid_data.speed, valid_data.label)
-        print('second')
         self.model.fit(train_data.img, train_data.speed,
                        epochs=epochs,
                        steps_per_epoch=train_data.len // train_data.batch_size,
@@ -154,7 +151,7 @@ class DeepVO(object):
         print(y_speed, y_pred)
         y_cat = tf.argmax(y_pred, -1)
         y_cat_speed = tf.to_float((tf.to_float(y_cat) + 0.5) * self.bucket_size)
-        return tf.squared_difference(y_cat_speed, y_speed)
+        return tf.reduce_mean(tf.square(y_cat_speed - y_speed), -1)
 
     def categorical_accuracy(self, y_speed, y_pred):
         y_true = self.bucket_speed(y_speed)
