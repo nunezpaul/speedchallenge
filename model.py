@@ -67,7 +67,7 @@ class DeepVO(object):
 
         model.compile(optimizer=self.optimizer,
                       loss=self.sparse_categorical_crossentropy,
-                      metrics=[self.categorical_accuracy, self.mean_squared_error])
+                      metrics=[self.categorical_accuracy, ]  # self.mean_squared_error])
         model.summary()
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
