@@ -66,14 +66,14 @@ class DeepVO(object):
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
-        losses = {'category': k.losses.sparse_categorical_crossentropy}
+        losses = {'category': self.sparse_categorical_crossentropy}
         loss_weights = {'category': 1.0}
-        metrics = {'category': 'categorical_accuracy',
+        metrics = {'category': self.categorical_accuracy,
                    'speed': self.mean_squared_error}
 
         model.compile(optimizer=self.optimizer,
                       loss=losses,
-                      loss_weights=loss_weights,
+                      # loss_weights=loss_weights,
                       metrics=metrics)
         model.summary()
         if self.load_model:
@@ -82,6 +82,15 @@ class DeepVO(object):
             print(f'Successfully reloaded pretrained {self.load_model} model!')
 
         return model
+
+    def sparse_categorical_crossentropy(self, y_true, y_pred):
+        cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return cat_crossentropy_loss
+
+    def categorical_accuracy(self, y_true, y_pred):
+        y_pred = tf.argmax(y_pred, -1)
+        same_cat = tf.equal(y_true, y_pred)
+        return tf.reduce_mean(tf.to_float(same_cat))
 
     def mean_squared_error(self, y_true, y_pred):
         speed = self.convert_to_speed(y_pred)
