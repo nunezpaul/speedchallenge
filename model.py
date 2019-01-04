@@ -21,6 +21,7 @@ class DeepVO(object):
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
+        self.make_save_dirs()
 
         # Convert model to tpu model
         # TODO: Fix the model so it works with TPU
@@ -44,12 +45,19 @@ class DeepVO(object):
 
     def setup_callbacks(self):
         callbacks = []
+        tensorboard_dir = f'{self.save_dir}log/'
+        saved_model_dir = f'{self.save_dir}models/{self.uuid}/'
+
+        for directory in (tensorboard_dir, saved_model_dir):
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
         tensorboard = k.callbacks.TensorBoard(log_dir=f'{self.save_dir}log/{self.uuid}',
                                               histogram_freq=0,
                                               write_graph=True,
                                               write_images=True)
-        model_path = 'models/{epoch:02d}_{val_loss:.2f}' + '_{uuid}.hdf5'.format(uuid=self.uuid)
-        checkpoint = k.callbacks.ModelCheckpoint(self.save_dir + model_path,
+        model_name = '{epoch:02d}_{val_loss:.2f}.hdf5'
+        checkpoint = k.callbacks.ModelCheckpoint(saved_model_dir + model_name,
                                                  monitor='val_loss',
                                                  verbose=0,
                                                  save_best_only=True,
@@ -173,7 +181,6 @@ class DeepVO(object):
             prediction_logits = self.model.predict(data.img, steps=1)
             prediction = DataFrame(prediction_logits)
             prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a', header=step==0)
-            print(step)
 
 
 if __name__ == '__main__':
