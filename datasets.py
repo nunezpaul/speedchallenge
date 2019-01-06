@@ -97,11 +97,11 @@ class TrainData(DataBase):
         stacked_img = self.normalize_img(stacked_img)
 
         # Add random gaussian noise to the images
-        # stacked_img = stacked_img + tf.random_normal(stddev=0.5,
-        #                                              shape=[self.crop_height,
-        #                                                     self.crop_width,
-        #                                                     self.num_channels],
-        #                                              )
+        stacked_img = stacked_img + tf.random_normal(stddev=0.3,
+                                                     shape=[self.crop_height,
+                                                            self.crop_width,
+                                                            self.num_channels],
+                                                     )
 
         return [stacked_img, output['category'], output['speed']]
 
