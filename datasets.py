@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from multiprocessing import cpu_count
+
 
 class DataBase(object):
     def __init__(self, len, batch_size):
@@ -28,7 +30,7 @@ class DataBase(object):
 
     def setup_dataset_iter(self, filenames, _parse_function):
         dataset = tf.data.TFRecordDataset(filenames)
-        dataset = dataset.map(_parse_function)
+        dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
         dataset = dataset.repeat().batch(self.batch_size)
         # dataset = dataset.shuffle(batch_size)
         dataset = dataset.prefetch(self.batch_size)
