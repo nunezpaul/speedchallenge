@@ -4,7 +4,7 @@ from multiprocessing import cpu_count
 
 
 class DataBase(object):
-    def __init__(self, len, batch_size, training):
+    def __init__(self, len, batch_size, training=False):
         # Save information about the dataset for processing later.
         self.training = training
         self.len = len
@@ -29,7 +29,7 @@ class DataBase(object):
     def __len__(self):
         return self.len
 
-    def setup_dataset_iter(self, filenames, _parse_function, training=False):
+    def setup_dataset_iter(self, filenames, _parse_function):
         dataset = tf.data.TFRecordDataset(filenames)
         dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
         dataset = dataset.repeat().batch(self.batch_size)
@@ -45,7 +45,7 @@ class DataBase(object):
             get_next_output[i] = tf.reshape(get_next_output[i], (self.batch_size,))
 
         # Add gaussian noise to the images
-        if training:
+        if self.training:
             get_next_output[0] = get_next_output[0] + tf.random_normal(stddev=0.3, shape=self.img_shape)
 
         return get_next_output + [iterator]
@@ -194,9 +194,12 @@ class TestData(NonTrainData):
 
 
 if __name__ == '__main__':
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
-    test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
+    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord',
+                           num_shards=10, batch_size=32, len=2000, training=True)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord',
+                           batch_size=32, len=8615)
+    test_data = TestData('data/tfrecords/test/test.tfrecord',
+                         batch_size=32, len=10797)
 
     for data in (train_data, valid_data, test_data):
         # check image size
