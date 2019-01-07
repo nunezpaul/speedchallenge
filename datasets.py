@@ -42,6 +42,9 @@ class DataBase(object):
         get_next_output[0] = tf.reshape(get_next_output[0], self.img_shape)
         for i in range(1, len(get_next_output)):
             get_next_output[i] = tf.reshape(get_next_output[i], (self.batch_size,))
+
+        # Add gaussian noise to the images
+        get_next_output[0] = get_next_output[0] + tf.random_normal(stddev=0.3, shape=self.img_shape)
         return get_next_output + [iterator]
 
     def normalize_img(self, img):
@@ -95,13 +98,6 @@ class TrainData(DataBase):
 
         # Normalize the img data
         stacked_img = self.normalize_img(stacked_img)
-
-        # Add random gaussian noise to the images
-        stacked_img = stacked_img + tf.random_normal(stddev=0.3,
-                                                     shape=[self.crop_height,
-                                                            self.crop_width,
-                                                            self.num_channels],
-                                                     )
 
         return [stacked_img, output['category'], output['speed']]
 
