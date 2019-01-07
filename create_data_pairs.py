@@ -25,10 +25,11 @@ def data_split(data, filename_out, split):
     return data.drop(val_data.index)
 
 
-def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10, records_per_category=200):
+def write_labeled_csv_data(data, filename_out, sharding, shuffle,
+                           write_class_weights=False, num_shards=10, records_per_category=200):
 
     if not sharding:
-        _write_csv(data, filename=filename_out, shuffle=shuffle)
+        _write_csv(data, filename=filename_out, shuffle=shuffle, write_class_weights=write_class_weights)
         return
 
     filename_out = filename_out.replace('.', '_shard_{}.')
@@ -56,7 +57,10 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
     return shard_filenames
 
 
-def _write_csv(dataframe, filename, shuffle):
+def _write_csv(dataframe, filename, shuffle, write_class_weights):
+    if write_class_weights:
+        class_weights = (dataframe.groupby('category').nunique()['curr_img'] / dataframe.shape[0]) ** -1
+        class_weights.to_csv(filename.replace('.', '_class_weights.'), index=False)
     if shuffle:
         dataframe = dataframe.sample(frac=1.0).reset_index(drop=True)
     dataframe.to_csv(filename, index=False)
@@ -78,6 +82,8 @@ if __name__ == '__main__':
                         help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--shuffle', action="store_true", default=False,
                         help='Shuffle the data before writing the data.')
+    parser.add_argument('--write_class_weights', action="store_true", default=False,
+                        help='Write how much each class should be weight. Based on inverse percentage of dataset.')
     parser.add_argument('--records_per_category', type=int, default=200,
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
@@ -93,4 +99,5 @@ if __name__ == '__main__':
     shard_filenames = write_labeled_csv_data(data, params['output_file'],
                                              sharding=params['shard'],
                                              records_per_category=params['records_per_category'],
-                                             shuffle=params['shuffle'])
+                                             shuffle=params['shuffle'],
+                                             write_class_weights=params['write_class_weights'])

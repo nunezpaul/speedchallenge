@@ -74,8 +74,10 @@ class DataBase(object):
 
 
 class TrainData(DataBase):
-    def __init__(self, file, num_shards, batch_size, len, training):
+    def __init__(self, file, num_shards, batch_size, len, training, class_weights_csv=None):
         super(TrainData, self).__init__(batch_size=batch_size, len=len * num_shards, training=training)
+        # Determine class weights
+        self.class_weights = self._get_class_weights(class_weights_csv)
 
         # Online data augmentation values
         self.max_random_hue_delta = 0.4
@@ -96,6 +98,17 @@ class TrainData(DataBase):
 
         # Normalize the images
         self.img = self.per_image_standardization(self.img)
+
+    def _get_class_weights(self, class_weights_csv):
+        if not class_weights_csv:
+            return
+
+        with open(class_weights_csv) as f:
+            weights = f.read().splitlines()
+
+        weights = [float(val) for val in weights]
+        class_weights = dict(zip(list(range(len(weights))), weights))
+        return class_weights
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
@@ -225,10 +238,16 @@ class TestData(NonTrainData):
         self.img, self.iter = self.setup_dataset_iter([file], self._parse_function)
         self.img = self.per_image_standardization(self.img)
 
+
 if __name__ == '__main__':
-    train_data = TrainData('data/tfrecords/train/train.tfrecord', num_shards= 1, batch_size=32, len=2000, training=True)
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
     test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
+    train_data = TrainData('data/tfrecords/train/train.tfrecord',
+                           num_shards=1,
+                           batch_size=32,
+                           len=2000,
+                           training=True,
+                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
     for data in (train_data, valid_data, test_data):
         # check image size

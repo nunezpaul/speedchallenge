@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from config import Config
 from datasets import TrainData, ValidData
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 
 
 class DeepVO(object):
@@ -168,6 +168,7 @@ class DeepVO(object):
         if valid_data:
             validation_data = [valid_data.img, {'category': valid_data.label, 'speed': valid_data.speed}]
         self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
+                       class_weight=train_data.class_weights,
                        epochs=epochs,
                        steps_per_epoch=train_data.len // train_data.batch_size,
                        validation_data=validation_data if valid_data else None,
@@ -188,8 +189,13 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive', force_remount=False)
 
-    train_data = TrainData('data/tfrecords/train/train.tfrecord', num_shards=1, batch_size=32, len=2000, training=True)
     valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+    train_data = TrainData('data/tfrecords/train/train.tfrecord',
+                           num_shards=1,
+                           batch_size=32,
+                           len=2000,
+                           training=True,
+                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
