@@ -3,7 +3,7 @@ import tensorflow as tf
 from multiprocessing import cpu_count
 
 
-tf.enable_eager_execution()
+# tf.enable_eager_execution()
 
 
 class DataBase(object):
