@@ -31,7 +31,7 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
         _write_csv(data, filename=filename_out, shuffle=shuffle)
         return
 
-    filename_out = filename_out.replace('.', '_{}.')
+    filename_out = filename_out.replace('.', '_shard_{}.')
     shard_filenames = {}
 
     # Split the data by its respective categorical designation
@@ -39,6 +39,7 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
     for i in range(data.category.max() + 1):
         data_splits.append(data[data.category == i])
 
+    # TODO: separate out the sharding and sampling methods
     # Create filenames and open shard files to be written
     for shard in range(num_shards):
         shard_filenames[shard] = filename_out.format(shard)
