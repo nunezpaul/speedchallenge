@@ -22,12 +22,9 @@ def inspect_images(data):
 
 if __name__ == '__main__':
     tf.enable_eager_execution()
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord',
-                           num_shards=10, batch_size=32, len=2000, training=True)
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord',
-                           batch_size=32, len=8615)
-    test_data = TestData('data/tfrecords/test/test.tfrecord',
-                         batch_size=32, len=10797)
+    train_data = TrainData('data/tfrecords/train/train.tfrecord', num_shards= 1, batch_size=32, len=2000, training=True)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+    test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
 
     for idx, data in enumerate((train_data, valid_data, test_data)):
         inspect_images(data)

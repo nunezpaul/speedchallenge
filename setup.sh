@@ -39,14 +39,9 @@ python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled
 python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/sorted_val.csv
 python create_test_img_pairs.py
 
-# Writing the shards of the training tfrecords
-for i in {0..9}; do
-  INPUTFILE=data/labeled_csv/train/train_shard_$i.csv
-  OUTPUTFILE=data/tfrecords/train/shard_$i.tfrecord
-  python convert_images_to_tfrecord.py --input_filename $INPUTFILE --output_filename $OUTPUTFILE
-done
-
-# Writing the validation and test data to tfrecord
+# Writing the train, test, val and sorted val tfrecords
+python convert_images_to_tfrecord.py --input_filename data/labeled_csv/train/train.csv \
+--output_filename data/tfrecords/train/train.tfrecord
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/val.csv \
 --output data/tfrecords/val/val.tfrecord
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/sorted_val.csv \
