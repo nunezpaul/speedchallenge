@@ -3,6 +3,9 @@ import tensorflow as tf
 from multiprocessing import cpu_count
 
 
+tf.enable_eager_execution()
+
+
 class DataBase(object):
     def __init__(self, len, batch_size, training=False):
         # Save information about the dataset for processing later.
@@ -36,22 +39,38 @@ class DataBase(object):
         # dataset = dataset.shuffle(batch_size)
         dataset = dataset.prefetch(self.batch_size)
         iterator = dataset.make_one_shot_iterator()
+
         # Output will be img, label and speed for train and val data but just img for test data
         get_next_output = list(iterator.get_next())
 
         # First position will always be the image. Reshaping here.
         get_next_output[0] = tf.reshape(get_next_output[0], self.img_shape)
+
+        # If there are additional params then they are reshaped to include the batch size
         for i in range(1, len(get_next_output)):
             get_next_output[i] = tf.reshape(get_next_output[i], (self.batch_size,))
 
-        # Add gaussian noise to the images
-        if self.training:
-            get_next_output[0] = get_next_output[0] + tf.random_normal(stddev=0.3, shape=self.img_shape)
-
         return get_next_output + [iterator]
 
-    def normalize_img(self, img):
-        return (tf.to_float(img) - 225. / 2.) / 255.
+    def per_image_standardization(self, images):
+        images = tf.cast(images, dtype=tf.float32)
+        images_mean = tf.reduce_mean(images, axis=[1, 2, 3], keepdims=True)
+
+        variances = tf.reduce_mean(tf.square(images), axis=[1, 2, 3], keepdims=True) - tf.square(images_mean)
+        variances = tf.nn.relu(variances)
+        stddevs = tf.sqrt(variances)
+
+        # Minimum normalization that protects against uniform images
+        num_pixels_per_img = tf.reduce_prod(tf.shape(images)[1:])
+        min_stddevs = tf.rsqrt(tf.cast(num_pixels_per_img, dtype=tf.float32))
+
+        pixel_value_scale = tf.maximum(stddevs, min_stddevs)
+        pixel_value_offset = images_mean
+
+        images = tf.subtract(images, pixel_value_offset)
+        images = tf.div(images, pixel_value_scale)
+
+        return images
 
 
 class TrainData(DataBase):
@@ -59,15 +78,22 @@ class TrainData(DataBase):
         super(TrainData, self).__init__(batch_size=batch_size, len=len * num_shards, training=training)
 
         # Online data augmentation values
-        self.max_random_hue_delta = 0.2
-        self.max_random_brightness_delta = 0.2
-        self.random_contrast_range = [0.7, 1.3]
-        self.random_saturation_range = [0.7, 1.3]
+        self.max_random_hue_delta = 0.4
+        self.max_random_brightness_delta = 0.4
+        self.random_contrast_range = [0.6, 1.4]
+        self.random_saturation_range = [0.6, 1.4]
         self.random_jpeg_quality_range = [5, 100]
 
         # Finish setting up the dataset
         filenames = [file.format(i) for i in range(num_shards)]
         self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, self._parse_function)
+
+        # Add gaussian noise to the images and clip it to the range of the img [0, 1)
+        self.img = self.img + tf.random_normal(stddev=0.4, shape=self.img_shape)
+        self.img = tf.clip_by_value(self.img, clip_value_min=0.0, clip_value_max=1.0)
+
+        # Normalize the images
+        self.img = self.per_image_standardization(self.img)
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
@@ -80,6 +106,7 @@ class TrainData(DataBase):
         # Stack the images by their channel and apply the same random crop
         stacked_img = tf.concat([prev_img, curr_img], axis=-1)
         stacked_img = tf.image.random_crop(stacked_img, [self.crop_height, self.crop_width, self.num_channels])
+        stacked_img = tf.to_float(stacked_img) / 255.  # rescaling [0 1)
 
         # Split the data and restack them (side-by-side) to apply the same random image processing
         side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
@@ -99,10 +126,12 @@ class TrainData(DataBase):
                                  side_by_side_img[self.crop_height:, :, :]],
                                 axis=-1)
 
-        # Normalize the img data
-        stacked_img = self.normalize_img(stacked_img)
+        labels = []
+        if 'category' in output:
+            labels.append(output['category'])
+            labels.append(output['speed'])
 
-        return [stacked_img, output['category'], output['speed']]
+        return [stacked_img] + labels
 
     # This section determines which random function for data augmentation is applied while training
     def _true_fn_l1(self, img, val):
@@ -164,12 +193,12 @@ class NonTrainData(DataBase):
 
         # Stack the two images and normalize them
         stacked_img = tf.concat([prev_img, curr_img], axis=-1)
-        stacked_img = self.normalize_img(stacked_img)
+        stacked_img = tf.to_float(stacked_img) / 255.
 
         labels = []
         if 'category' in output:
-            category = tf.clip_by_value(output['category'], 0, 9)
-            labels += [category, output['speed']]
+            labels.append(tf.clip_by_value(output['category'], 0, 9))
+            labels.append(output['speed'])
 
         return [stacked_img] + labels
 
@@ -179,6 +208,7 @@ class ValidData(NonTrainData):
         super(ValidData, self).__init__(batch_size=batch_size, len=len)
         # Finish setting up the dataset iterator
         self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], self._parse_function)
+        self.img = self.per_image_standardization(self.img)
 
 
 class TestData(NonTrainData):
@@ -191,7 +221,7 @@ class TestData(NonTrainData):
             'curr_img': tf.FixedLenFeature([], tf.string),
         }
         self.img, self.iter = self.setup_dataset_iter([file], self._parse_function)
-
+        self.img = self.per_image_standardization(self.img)
 
 if __name__ == '__main__':
     train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord',
@@ -214,3 +244,9 @@ if __name__ == '__main__':
         # check speed size
         print(data.speed.shape)
         assert data.speed.shape == (data.batch_size,)
+
+    test_img = tf.random_uniform((32, 400, 600, 6))
+    my_test_img_normed = train_data.per_image_standardization(test_img)
+    tf_test_img_normed = tf.map_fn(tf.image.per_image_standardization, test_img)
+    difference = tf.reduce_mean(tf.abs(tf.subtract(my_test_img_normed, tf_test_img_normed)))
+    print(difference)
