@@ -4,8 +4,9 @@ from multiprocessing import cpu_count
 
 
 class DataBase(object):
-    def __init__(self, len, batch_size):
+    def __init__(self, len, batch_size, training):
         # Save information about the dataset for processing later.
+        self.training = training
         self.len = len
         self.batch_size = batch_size
 
@@ -28,7 +29,7 @@ class DataBase(object):
     def __len__(self):
         return self.len
 
-    def setup_dataset_iter(self, filenames, _parse_function):
+    def setup_dataset_iter(self, filenames, _parse_function, training=False):
         dataset = tf.data.TFRecordDataset(filenames)
         dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
         dataset = dataset.repeat().batch(self.batch_size)
@@ -44,7 +45,9 @@ class DataBase(object):
             get_next_output[i] = tf.reshape(get_next_output[i], (self.batch_size,))
 
         # Add gaussian noise to the images
-        get_next_output[0] = get_next_output[0] + tf.random_normal(stddev=0.3, shape=self.img_shape)
+        if training:
+            get_next_output[0] = get_next_output[0] + tf.random_normal(stddev=0.3, shape=self.img_shape)
+
         return get_next_output + [iterator]
 
     def normalize_img(self, img):
@@ -52,8 +55,8 @@ class DataBase(object):
 
 
 class TrainData(DataBase):
-    def __init__(self, file, num_shards, batch_size, len):
-        super(TrainData, self).__init__(batch_size=batch_size, len=len * num_shards)
+    def __init__(self, file, num_shards, batch_size, len, training):
+        super(TrainData, self).__init__(batch_size=batch_size, len=len * num_shards, training=training)
 
         # Online data augmentation values
         self.max_random_hue_delta = 0.2
