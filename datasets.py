@@ -22,7 +22,7 @@ class DataBase(object):
         }
 
         # Image crop dimensions
-        self.crop_width = 640
+        self.crop_width = 640 - 100
         self.crop_height = 300
 
         # Combined total num channels
@@ -193,7 +193,7 @@ class NonTrainData(DataBase):
     def __init__(self, batch_size, len):
         super(NonTrainData, self).__init__(batch_size=batch_size, len=len)
         self.crop_x_left = 0
-        self.crop_y_top = 50
+        self.crop_y_top = 50 + 50
 
     def _parse_function(self, example_proto):
         # Parse the input tf.Example proto using the dictionary above.
