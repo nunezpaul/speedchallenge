@@ -3,6 +3,7 @@ import uuid
 
 import keras as k
 import tensorflow as tf
+import keras, tensorflow
 
 from config import Config
 from datasets import TrainData, ValidData
@@ -33,7 +34,7 @@ class DeepVO(object):
     def setup_optimizer(self, opt, lr):
         if self.load_model:
             print('Reloading previous optimizer state.')
-            prev_model = k.models.load_model(self.load_model, custom_objects={'tf': tf, 'k': k})
+            prev_model = k.models.load_model(self.load_model, custom_objects={'tf': tf, 'k': keras})
             opt = prev_model.optimizer
             print('Complete!')
         elif opt == 'sgd':
@@ -73,7 +74,7 @@ class DeepVO(object):
     def setup_model(self, train_data):
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
-            model = k.models.load_model(self.load_model, custom_objects={'tf': tf, 'k': k})
+            model = k.models.load_model(self.load_model, custom_objects={'tf': tensorflow, 'k': keras})
             print(f'Successfully reloaded pretrained {self.load_model} model!')
         else:
             model_input = k.layers.Input(shape=train_data.img_shape[1:])
