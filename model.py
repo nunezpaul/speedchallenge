@@ -167,13 +167,19 @@ class DeepVO(object):
     def fit(self, epochs, train_data, valid_data=None):
         if valid_data:
             validation_data = [valid_data.img, {'category': valid_data.label, 'speed': valid_data.speed}]
-        self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
-                       class_weight=train_data.class_weights,
-                       epochs=epochs,
-                       steps_per_epoch=train_data.len // train_data.batch_size,
-                       validation_data=validation_data if valid_data else None,
-                       validation_steps=valid_data.len // valid_data.batch_size if valid_data else None,
-                       callbacks=self.callbacks)
+            self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
+                           class_weight=train_data.class_weights,
+                           epochs=epochs,
+                           steps_per_epoch=train_data.len // train_data.batch_size,
+                           validation_data=validation_data,
+                           validation_steps=valid_data.len // valid_data.batch_size,
+                           callbacks=self.callbacks)
+        else:
+            self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
+                           class_weight=train_data.class_weights,
+                           epochs=epochs,
+                           steps_per_epoch=train_data.len // train_data.batch_size,
+                           callbacks=self.callbacks)
 
     def predict(self, data, save_dir):
         filepath = (save_dir if save_dir else './') + 'prediction.txt'
