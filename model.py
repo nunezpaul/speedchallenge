@@ -57,7 +57,7 @@ class DeepVO(object):
                                               write_images=True)
         model_name = '{epoch:02d}_{val_loss:.2f}.hdf5'
         checkpoint = k.callbacks.ModelCheckpoint(saved_model_dir + model_name,
-                                                 monitor='loss',
+                                                 monitor='val_loss',
                                                  verbose=0,
                                                  save_best_only=True,
                                                  save_weights_only=False,
@@ -201,6 +201,12 @@ if __name__ == '__main__':
                            len=15300,
                            training=True,
                            class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
+    valid_data = TrainData('data/tfrecords/train/train.tfrecord',
+                           num_shards=1,
+                           batch_size=32,
+                           len=1500,
+                           training=True,
+                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
-    deep_vo.fit(epochs=config.params['epochs'], train_data=train_data)
+    deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
