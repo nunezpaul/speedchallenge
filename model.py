@@ -189,7 +189,6 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive', force_remount=False)
 
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=5100)
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
                            batch_size=32,
@@ -198,4 +197,4 @@ if __name__ == '__main__':
                            class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
-    deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
+    deep_vo.fit(epochs=config.params['epochs'], train_data=train_data)

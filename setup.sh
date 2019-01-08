@@ -2,7 +2,7 @@
 
 # Download all videos and move them to data/videos
 mkdir -p data/videos
-for NAME in val test train; do
+for NAME in test train; do
   if test ! -f data/videos/$NAME.mp4; then
     wget sunlight.caltech.edu/pnunez/speedchallenge/$NAME.mp4 && mv $NAME.mp4 data/videos
   else
@@ -11,7 +11,7 @@ for NAME in val test train; do
 done
 
 # Download labeled speeds for their respective videos
-for NAME in val train; do
+for NAME in train; do
   if test ! -f data/$NAME.txt; then
     wget sunlight.caltech.edu/pnunez/speedchallenge/$NAME.txt && mv $NAME.txt data
   else
@@ -20,7 +20,7 @@ for NAME in val train; do
 done
 
 # Create the image, labeled_csv and tfrecords dirs for the respective files
-for NAME in val test train; do
+for NAME in test train; do
   mkdir -p data/images/$NAME
   mkdir -p data/labeled_csv/$NAME
   mkdir -p data/tfrecords/$NAME
@@ -33,14 +33,12 @@ ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%
 
 # Create all img label and place in respective directory
 python create_data_pairs.py --speed_file data/train.txt --output_file data/labeled_csv/train/train.csv \
---shuffle --write_class_weights --data_split --split_inc 20 --lookback 5
+--shuffle --write_class_weights
 python create_test_img_pairs.py
 
 # Writing the train, test, val and sorted val tfrecords
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/train/train.csv \
 --output_filename data/tfrecords/train/train.tfrecord
-python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/val.csv \
---output data/tfrecords/val/val.tfrecord
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/test/test.csv \
 --output data/tfrecords/test/test.tfrecord
 
