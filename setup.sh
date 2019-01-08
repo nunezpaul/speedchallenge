@@ -2,7 +2,7 @@
 
 # Download all videos and move them to data/videos
 mkdir -p data/videos
-for NAME in val test train_2x; do
+for NAME in val test train_3x; do
   if test ! -f data/videos/$NAME.mp4; then
     wget sunlight.caltech.edu/pnunez/speedchallenge/$NAME.mp4 && mv $NAME.mp4 data/videos
   else
@@ -28,13 +28,13 @@ done
 
 # Convert the videos to jpegs using ffmpeg
 ffmpeg -v || apt install ffmpeg
-ffmpeg -i data/videos/train_2x.mp4 -start_number 0 -qscale:v 2 data/images/train/img%d.jpg -hide_banner; echo train images done!
+ffmpeg -i data/videos/train_3x.mp4 -start_number 0 -qscale:v 2 data/images/train/img%d.jpg -hide_banner; echo train images done!
 ffmpeg -i data/videos/val.mp4 -start_number 0 -qscale:v 2 data/images/val/img%d.jpg -hide_banner; echo val images done!
 ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%d.jpg -hide_banner; echo test images done!
 
 # Create all img label and place in respective directory
 python create_data_pairs.py --speed_file data/train.txt \
---output_file data/labeled_csv/train/train.csv --shuffle --write_class_weights --skip 2
+--output_file data/labeled_csv/train/train.csv --shuffle --write_class_weights --skip 3
 python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/val.csv --shuffle
 python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/sorted_val.csv
 python create_test_img_pairs.py
