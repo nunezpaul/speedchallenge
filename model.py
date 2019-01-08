@@ -57,7 +57,7 @@ class DeepVO(object):
                                               write_images=True)
         model_name = '{epoch:02d}_{val_loss:.2f}.hdf5'
         checkpoint = k.callbacks.ModelCheckpoint(saved_model_dir + model_name,
-                                                 monitor='val_loss',
+                                                 monitor='loss',
                                                  verbose=0,
                                                  save_best_only=True,
                                                  save_weights_only=False,
