@@ -193,7 +193,7 @@ if __name__ == '__main__':
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
                            batch_size=32,
-                           len=20400,
+                           len=20400 / 2,
                            training=True,
                            class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
