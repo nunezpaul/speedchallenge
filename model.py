@@ -18,7 +18,7 @@ class DeepVO(object):
         self.bucket_size = bucket_size
         self.bucket_size_tf = tf.constant(self.bucket_size, dtype=tf.float32, shape=(1, 1))
         self.num_buckets = 30 // bucket_size
-        self.optimizer = self.setup_optimizer(opt, lr)
+        self.optimizer = self.setup_optimizer(opt, lr) if not load_model else None
         self.callbacks = self.setup_callbacks()
         self.model = self.setup_model(train_data)
 
@@ -71,24 +71,24 @@ class DeepVO(object):
         return callbacks
 
     def setup_model(self, train_data):
-        print(train_data.speed.shape)
-        model_input = k.layers.Input(shape=train_data.img_shape[1:])
-        model_output = self.cnn(model_input)
-        model = k.models.Model(inputs=model_input, outputs=model_output)
-
-        losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': self.mean_squared_error}
-        loss_weights = {'category': 1.0, 'speed': 0.0}
-        metrics = {'category': k.metrics.sparse_categorical_accuracy}
-
-        model.compile(optimizer=self.optimizer,
-                      loss=losses,
-                      loss_weights=loss_weights,
-                      metrics=metrics)
-        model.summary()
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
-            model.load_weights(self.load_model)
+            model = k.models.load_model(self.load_model)
             print(f'Successfully reloaded pretrained {self.load_model} model!')
+        else:
+            model_input = k.layers.Input(shape=train_data.img_shape[1:])
+            model_output = self.cnn(model_input)
+            model = k.models.Model(inputs=model_input, outputs=model_output)
+
+            losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': self.mean_squared_error}
+            loss_weights = {'category': 1.0, 'speed': 0.0}
+            metrics = {'category': k.metrics.sparse_categorical_accuracy}
+
+            model.compile(optimizer=self.optimizer,
+                          loss=losses,
+                          loss_weights=loss_weights,
+                          metrics=metrics)
+        model.summary()
 
         return model
 
