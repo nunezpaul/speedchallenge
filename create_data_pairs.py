@@ -3,10 +3,13 @@ import argparse
 import pandas as pd
 
 
-def create_image_value_pairs(speed_file, bucket_size):
+def create_image_value_pairs(speed_file, bucket_size, skip):
     # read in speeds from file.txt
     img_dir = speed_file.replace('/', '/images/').replace('.txt', '/img{}.jpg')
     data = pd.read_csv(speed_file, header=None, names=['speed'])
+    if skip:
+        data = data.iloc[::skip, :]
+        data = data.reset_index()
     data['category'] = data['speed'].apply(lambda x: x // bucket_size).astype(int)
     data['prev_img'] = data.index.to_series().apply(lambda x: img_dir.format(x))
     data['curr_img'] = data.index.to_series().apply(lambda x: img_dir.format(x + 1))
@@ -88,10 +91,12 @@ if __name__ == '__main__':
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
                         help='How many shards will be created from the data to be written.')
+    parser.add_argument('--skip', type=int, default=0,
+                        help='How many data points will be skipped.')
     params = vars(parser.parse_args())
 
     file_in = params['speed_file']
-    data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'])
+    data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'], skip=params['skip'])
     if params['data_split']:
         data = data_split(data,
                           filename_out=params['output_file'],
