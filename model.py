@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from config import Config
 from datasets import TrainData, ValidData
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 
 
 class DeepVO(object):
@@ -180,7 +180,7 @@ class DeepVO(object):
         for step in range(data.len // data.batch_size + 1):
             prediction_logits = self.model.predict(data.img, steps=1)
             prediction = DataFrame(prediction_logits)
-            prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a', header=step == 0)
+            prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a', header=step==0)
 
 
 if __name__ == '__main__':
@@ -189,11 +189,11 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive', force_remount=False)
 
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=5100)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
                            batch_size=32,
-                           len=15300,
+                           len=20400,
                            training=True,
                            class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 

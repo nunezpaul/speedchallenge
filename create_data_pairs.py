@@ -16,10 +16,9 @@ def create_image_value_pairs(speed_file, bucket_size):
     return data
 
 
-def data_split(data, filename_out, split, lookback):
-    # Grab every ith data point as well as the k behind it and send it to a csv file as our validation set
-    for i in range(lookback):
-        val_data = data.iloc[::split, :] if i == 0 else val_data.append(data.iloc[::split-i, :])
+def data_split(data, filename_out, split):
+    # Grab every ith data point and send it to a csv file
+    val_data = data.iloc[::split, :]
     val_data.to_csv(filename_out.replace('train', 'val'), index=False)
 
     # Remove every ith data point and return the resulting dataframe
@@ -77,10 +76,6 @@ if __name__ == '__main__':
                         help='Size the grouping window for all speeds')
     parser.add_argument('--split_inc', type=int, default=10,
                         help='Size in which every ith data point is sent as a validation point.')
-    parser.add_argument('--lookback', type=int, default=5,
-                        help='If splitting data in train/val set then this is how far back the separation will start. '
-                             'e.g. a split of 20 and look back of 5 means that every 16th, 17th, 18th, 19th and 20th '
-                             'will be reserved as validation data.')
     parser.add_argument('--data_split', action="store_true", default=False,
                         help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--shard', action="store_true", default=False,
@@ -99,7 +94,6 @@ if __name__ == '__main__':
     data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'])
     if params['data_split']:
         data = data_split(data,
-                          lookback=params['lookback'],
                           filename_out=params['output_file'],
                           split=params['split_inc'])
     shard_filenames = write_labeled_csv_data(data, params['output_file'],

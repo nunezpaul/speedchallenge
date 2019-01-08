@@ -91,6 +91,7 @@ class TrainData(DataBase):
         self.img, self.label, self.speed, self.iter = self.setup_dataset_iter(filenames, self._parse_function)
 
         # Add gaussian noise to the images and clip it to the range of the img [0, 1)
+
         self.img = self.img + tf.random_normal(stddev=tf.random_uniform(shape=(), minval=0, maxval=0.5),
                                                shape=self.img_shape)
         self.img = tf.clip_by_value(self.img, clip_value_min=0.0, clip_value_max=1.0)
