@@ -73,7 +73,7 @@ class DeepVO(object):
     def setup_model(self, train_data):
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
-            model = k.models.load_model(self.load_model)
+            model = k.models.load_model(self.load_model, custom_objects={'tf': tf, 'k': k})
             print(f'Successfully reloaded pretrained {self.load_model} model!')
         else:
             model_input = k.layers.Input(shape=train_data.img_shape[1:])
