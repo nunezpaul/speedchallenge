@@ -29,14 +29,11 @@ done
 # Convert the videos to jpegs using ffmpeg
 ffmpeg -v || apt install ffmpeg
 ffmpeg -i data/videos/train.mp4 -start_number 0 -qscale:v 2 data/images/train/img%d.jpg -hide_banner; echo train images done!
-ffmpeg -i data/videos/val.mp4 -start_number 0 -qscale:v 2 data/images/val/img%d.jpg -hide_banner; echo val images done!
 ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%d.jpg -hide_banner; echo test images done!
 
 # Create all img label and place in respective directory
-python create_data_pairs.py --speed_file data/train.txt \
---output_file data/labeled_csv/train/train.csv --shuffle --write_class_weights
-python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/val.csv --shuffle
-python create_data_pairs.py --speed_file data/val.txt --output_file data/labeled_csv/val/sorted_val.csv
+python create_data_pairs.py --speed_file data/train.txt --output_file data/labeled_csv/train/train.csv \
+--shuffle --write_class_weights --data_split --split_inc 20 --lookback 5
 python create_test_img_pairs.py
 
 # Writing the train, test, val and sorted val tfrecords
@@ -44,8 +41,6 @@ python convert_images_to_tfrecord.py --input_filename data/labeled_csv/train/tra
 --output_filename data/tfrecords/train/train.tfrecord
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/val.csv \
 --output data/tfrecords/val/val.tfrecord
-python convert_images_to_tfrecord.py --input_filename data/labeled_csv/val/sorted_val.csv \
---output data/tfrecords/val/sorted_val.tfrecord
 python convert_images_to_tfrecord.py --input_filename data/labeled_csv/test/test.csv \
 --output data/tfrecords/test/test.tfrecord
 
