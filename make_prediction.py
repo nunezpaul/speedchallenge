@@ -9,8 +9,8 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive')
 
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
-    valid_data = ValidData('data/tfrecords/val/sorted_val.tfrecord', batch_size=32, len=8615)
+    train_data = TrainData('data/tfrecords/train/train.tfrecord', num_shards=10, batch_size=32, len=2000)
+    valid_data = ValidData('data/tfrecords/val/sorted_train.tfrecord', batch_size=32, len=20400)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
