@@ -16,22 +16,26 @@ def create_image_value_pairs(speed_file, bucket_size):
     return data
 
 
-def data_split(data, filename_out, split):
-    # Grab every ith data point and send it to a csv file
-    val_data = data.iloc[::split, :]
+def data_split(data, filename_out, split, lookback):
+    # Grab every ith data point as well as the k behind it and send it to a csv file as our validation set
+    val_rows = pd.np.arange(0, data.shape[0], split)
+    val_rows = pd.np.concatenate([val_rows + i for i in range(lookback)])
+    val_data = data.iloc[val_rows, :]
     val_data.to_csv(filename_out.replace('train', 'val'), index=False)
+    print(val_data.shape)
 
     # Remove every ith data point and return the resulting dataframe
     return data.drop(val_data.index)
 
 
-def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10, records_per_category=200):
+def write_labeled_csv_data(data, filename_out, sharding, shuffle,
+                           write_class_weights=False, num_shards=10, records_per_category=200):
 
     if not sharding:
-        _write_csv(data, filename=filename_out, shuffle=shuffle)
-        return
+        _write_csv(data, filename=filename_out, shuffle=shuffle, write_class_weights=write_class_weights)
+        return filename_out
 
-    filename_out = filename_out.replace('.', '_{}.')
+    filename_out = filename_out.replace('.', '_shard_{}.')
     shard_filenames = {}
 
     # Split the data by its respective categorical designation
@@ -39,6 +43,7 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
     for i in range(data.category.max() + 1):
         data_splits.append(data[data.category == i])
 
+    # TODO: separate out the sharding and sampling methods
     # Create filenames and open shard files to be written
     for shard in range(num_shards):
         shard_filenames[shard] = filename_out.format(shard)
@@ -55,7 +60,10 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle, num_shards=10,
     return shard_filenames
 
 
-def _write_csv(dataframe, filename, shuffle):
+def _write_csv(dataframe, filename, shuffle, write_class_weights):
+    if write_class_weights:
+        class_weights = (dataframe.groupby('category').nunique()['curr_img'] / dataframe.shape[0]) ** -1
+        class_weights.to_csv(filename.replace('.', '_class_weights.'), index=False)
     if shuffle:
         dataframe = dataframe.sample(frac=1.0).reset_index(drop=True)
     dataframe.to_csv(filename, index=False)
@@ -69,14 +77,20 @@ if __name__ == '__main__':
                         help='file path for where the labeled data is going to be written to.')
     parser.add_argument('--bucket_size', type=int, default=3,
                         help='Size the grouping window for all speeds')
-    parser.add_argument('--split_inc', type=int, default=10,
+    parser.add_argument('--split_inc', type=int, default=30,
                         help='Size in which every ith data point is sent as a validation point.')
+    parser.add_argument('--lookback', type=int, default=5,
+                        help='If splitting data in train/val set then this is how far back the separation will start. '
+                             'e.g. a split of 20 and look back of 5 means that every 16th, 17th, 18th, 19th and 20th '
+                             'will be reserved as validation data.')
     parser.add_argument('--data_split', action="store_true", default=False,
                         help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--shard', action="store_true", default=False,
                         help='Takes every 10th data point and sends it to be validation data.')
     parser.add_argument('--shuffle', action="store_true", default=False,
                         help='Shuffle the data before writing the data.')
+    parser.add_argument('--write_class_weights', action="store_true", default=False,
+                        help='Write how much each class should be weight. Based on inverse percentage of dataset.')
     parser.add_argument('--records_per_category', type=int, default=200,
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
@@ -85,11 +99,15 @@ if __name__ == '__main__':
 
     file_in = params['speed_file']
     data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'])
+    print(data.shape)
     if params['data_split']:
         data = data_split(data,
+                          lookback=params['lookback'],
                           filename_out=params['output_file'],
                           split=params['split_inc'])
+    print(data.shape)
     shard_filenames = write_labeled_csv_data(data, params['output_file'],
                                              sharding=params['shard'],
                                              records_per_category=params['records_per_category'],
-                                             shuffle=params['shuffle'])
+                                             shuffle=params['shuffle'],
+                                             write_class_weights=params['write_class_weights'])

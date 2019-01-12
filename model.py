@@ -1,15 +1,12 @@
 import os
 import uuid
 
+import keras as k
 import tensorflow as tf
-import tensorflow.keras as k
 
 from config import Config
 from datasets import TrainData, ValidData
-from pandas import DataFrame
-
-
-# tf.executing_eagerly()
+from pandas import DataFrame, read_csv
 
 
 class DeepVO(object):
@@ -40,9 +37,9 @@ class DeepVO(object):
             opt = prev_model.optimizer
             print('Complete!')
         elif opt == 'sgd':
-            tf.train.GradientDescentOptimizer(learning_rate=lr)
+            opt = k.optimizers.SGD(lr=lr, momentum=0.9)
         else:
-            opt = tf.train.AdamOptimizer(learning_rate=lr)
+            opt = k.optimizers.adam(lr=lr)
         return opt
 
     def setup_callbacks(self):
@@ -74,19 +71,20 @@ class DeepVO(object):
         return callbacks
 
     def setup_model(self, train_data):
+        print(train_data.speed.shape)
         model_input = k.layers.Input(shape=train_data.img_shape[1:])
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
 
-        losses = {'category': k.losses.categorical_crossentropy, 'speed': self.mean_squared_error}
+        losses = {'category': k.losses.sparse_categorical_crossentropy, 'speed': self.mean_squared_error}
         loss_weights = {'category': 1.0, 'speed': 0.0}
-        metrics = {'category': k.metrics.categorical_accuracy}
+        metrics = {'category': k.metrics.sparse_categorical_accuracy}
 
         model.compile(optimizer=self.optimizer,
                       loss=losses,
                       loss_weights=loss_weights,
                       metrics=metrics)
-        # model.summary()
+        model.summary()
         if self.load_model:
             print(f'Reloading pretrained {self.load_model} model.')
             model.load_weights(self.load_model)
@@ -95,7 +93,8 @@ class DeepVO(object):
         return model
 
     def sparse_categorical_crossentropy(self, y_true, y_pred):
-        return k.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        cat_crossentropy_loss = k.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return cat_crossentropy_loss
 
     def mean_squared_error(self, y_true, y_pred):
         speed = self.convert_to_speed(y_pred)
@@ -104,48 +103,48 @@ class DeepVO(object):
     def convert_to_speed(self, category_output):
         category = tf.to_float(tf.argmax(category_output, axis=-1)) + 0.5
         speed_output = tf.multiply(category, self.bucket_size)
-        return tf.expand_dims(speed_output, axis=-1)
+        return speed_output
 
     def cnn(self, model_input):
         conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
         conv1 = k.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
         conv1 = k.layers.BatchNormalization()(conv1)
-        conv1 = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu1')(conv1)
+        conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu1')(conv1)
 
         conv2 = k.layers.ZeroPadding2D((2, 2))(conv1)
         conv2 = k.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
         conv2 = k.layers.BatchNormalization()(conv2)
-        conv2 = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu2')(conv2)
+        conv2 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu2')(conv2)
 
         conv3a = k.layers.ZeroPadding2D((2, 2))(conv2)
         conv3a = k.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
         conv3a = k.layers.BatchNormalization()(conv3a)
-        conv3a = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu3a')(conv3a)
+        conv3a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3a')(conv3a)
 
         conv3b = k.layers.ZeroPadding2D()(conv3a)
         conv3b = k.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
         conv3b = k.layers.BatchNormalization()(conv3b)
-        conv3b = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu3b')(conv3b)
+        conv3b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3b')(conv3b)
 
         conv4 = k.layers.ZeroPadding2D()(conv3b)
         conv4 = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
         conv4 = k.layers.BatchNormalization()(conv4)
-        conv4 = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu4')(conv4)
+        conv4 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4')(conv4)
 
         conv4b = k.layers.ZeroPadding2D()(conv4)
         conv4b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
         conv4b = k.layers.BatchNormalization()(conv4b)
-        conv4b = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu4b')(conv4b)
+        conv4b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4b')(conv4b)
 
         conv5a = k.layers.ZeroPadding2D()(conv4b)
         conv5a = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
         conv5a = k.layers.BatchNormalization()(conv5a)
-        conv5a = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu5a')(conv5a)
+        conv5a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5a')(conv5a)
 
         conv5b = k.layers.ZeroPadding2D()(conv5a)
         conv5b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
         conv5b = k.layers.BatchNormalization()(conv5b)
-        conv5b = k.layers.Lambda(lambda x: k.activations.relu(x), name='relu5b')(conv5b)
+        conv5b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5b')(conv5b)
 
         conv6 = k.layers.ZeroPadding2D()(conv5b)
         conv6 = k.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
@@ -161,16 +160,15 @@ class DeepVO(object):
         fc7_dropout = k.layers.Dropout(self.dropout)(fc7)
 
         category_output = k.layers.Dense(self.num_buckets, activation='softmax', name='category')(fc7_dropout)
-        speed_output = k.layers.Lambda(lambda x: self.convert_to_speed(x), name='speed')(category_output)
+        speed_output = k.layers.Lambda(lambda x: x, name='speed')(category_output)
 
         return category_output, speed_output
 
     def fit(self, epochs, train_data, valid_data=None):
         if valid_data:
-            validation_data = [valid_data.img, {'category': tf.one_hot(valid_data.label, depth=self.num_buckets),
-                                                'speed': tf.expand_dims(valid_data.speed, -1)}]
-        self.model.fit(train_data.img, {'category': tf.one_hot(train_data.label, depth=self.num_buckets),
-                                        'speed': tf.expand_dims(train_data.speed, -1)},
+            validation_data = [valid_data.img, {'category': valid_data.label, 'speed': valid_data.speed}]
+        self.model.fit(train_data.img, {'category': train_data.label, 'speed': train_data.speed},
+                       class_weight=train_data.class_weights,
                        epochs=epochs,
                        steps_per_epoch=train_data.len // train_data.batch_size,
                        validation_data=validation_data if valid_data else None,
@@ -191,8 +189,13 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive', force_remount=False)
 
-    train_data = TrainData('data/tfrecords/train/shard_{}.tfrecord', num_shards=10, batch_size=32, len=2000)
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=2040)
+    train_data = TrainData('data/tfrecords/train/train.tfrecord',
+                           num_shards=1,
+                           batch_size=64,
+                           len=18360,
+                           training=True,
+                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
