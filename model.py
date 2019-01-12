@@ -179,6 +179,7 @@ class DeepVO(object):
         filepath = (save_dir if save_dir else './') + 'prediction.txt'
         for step in range(data.len // data.batch_size + 1):
             prediction_logits = self.model.predict(data.img, steps=1)
+            print(prediction_logits.shape)
             prediction = DataFrame(prediction_logits)
             prediction.to_csv(filepath, index=False, mode='w' if step == 0 else 'a', header=step==0)
 
