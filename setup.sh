@@ -31,9 +31,9 @@ for PATH in data/labeled_csv/ data/tfrecords/; do
 done
 
 # Convert the videos to jpegs using ffmpeg
-!ffmpeg -v || apt install ffmpeg
-!ffmpeg -i data/videos/train.mp4 -start_number 0 -qscale:v 2 data/images/train/img%d.jpg -hide_banner; echo train images done!
-!ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%d.jpg -hide_banner; echo test images done!
+ffmpeg -v || apt install ffmpeg
+ffmpeg -i data/videos/train.mp4 -start_number 0 -qscale:v 2 data/images/train/img%d.jpg -hide_banner; echo train images done!
+ffmpeg -i data/videos/test.mp4 -start_number 0 -qscale:v 2 data/images/test/img%d.jpg -hide_banner; echo test images done!
 
 # Create all img label and place in respective directory
 python create_data_pairs.py --speed_file data/train.txt --output_file data/labeled_csv/train/train.csv \
