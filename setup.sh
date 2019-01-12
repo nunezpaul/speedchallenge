@@ -20,14 +20,10 @@ for NAME in train; do
 done
 
 # Create the image, labeled_csv and tfrecords dirs for the respective files
-for NAME in test train; do
+for NAME in test train val; do
   mkdir -p data/images/$NAME
   mkdir -p data/labeled_csv/$NAME
   mkdir -p data/tfrecords/$NAME
-done
-
-for PATH in data/labeled_csv/ data/tfrecords/; do
-  mkdir -p $PATH\val
 done
 
 # Convert the videos to jpegs using ffmpeg
