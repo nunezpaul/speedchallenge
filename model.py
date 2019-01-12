@@ -189,11 +189,11 @@ if __name__ == '__main__':
         from google.colab import drive
         drive.mount('gdrive', force_remount=False)
 
-        valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=2130)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=2040)
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
                            batch_size=32,
-                           len=20400,
+                           len=18360,
                            training=True,
                            class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
 
