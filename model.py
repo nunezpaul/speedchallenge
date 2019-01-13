@@ -199,7 +199,7 @@ if __name__ == '__main__':
                            batch_size=32,
                            len=18360,
                            training=True,
-                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
+                           class_weights_csv='model_params/class_weights.csv')
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
     deep_vo.fit(epochs=config.params['epochs'], train_data=train_data, valid_data=valid_data)
