@@ -65,8 +65,8 @@ class DeepVO(object):
                                                  mode='auto',
                                                  period=1)
         reduce_lr = k.callbacks.ReduceLROnPlateau(monitor='val_loss',
-                                                  factor=0.2,
-                                                  patience=5,
+                                                  factor=0.1,
+                                                  patience=2,
                                                   min_lr=10 ** -7)
         callbacks += [tensorboard, checkpoint, reduce_lr]
         return callbacks
