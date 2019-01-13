@@ -1,6 +1,22 @@
 import argparse
+import os
 
 import pandas as pd
+
+
+def create_image_pairs(test_img_dir):
+    num_imgs = len(os.listdir(test_img_dir))
+    prev_img = []
+    curr_img = []
+    for i in range(num_imgs - 1):
+        prev_img.append(f'data/images/test/img{i}.jpg')
+        curr_img.append(f'data/images/test/img{i + 1}.jpg')
+
+    img_pairs = pd.DataFrame()
+    img_pairs['prev_img'] = prev_img
+    img_pairs['curr_img'] = curr_img
+
+    return img_pairs
 
 
 def create_image_value_pairs(speed_file, bucket_size):
@@ -22,17 +38,19 @@ def data_split(data, filename_out, split, lookback):
     val_rows = pd.np.concatenate([val_rows + i for i in range(lookback)])
     val_data = data.iloc[val_rows, :]
     val_data.to_csv(filename_out.replace('train', 'val'), index=False)
-    print(val_data.shape)
 
     # Remove every ith data point and return the resulting dataframe
     return data.drop(val_data.index)
 
 
-def write_labeled_csv_data(data, filename_out, sharding, shuffle,
+def write_labeled_csv_data(data, filename_out, sharding, shuffle, model_params_dir,
                            write_class_weights=False, num_shards=10, records_per_category=200):
 
     if not sharding:
-        _write_csv(data, filename=filename_out, shuffle=shuffle, write_class_weights=write_class_weights)
+        _write_csv(data, filename=filename_out,
+                   shuffle=shuffle,
+                   write_class_weights=write_class_weights,
+                   model_params_dir=model_params_dir)
         return filename_out
 
     filename_out = filename_out.replace('.', '_shard_{}.')
@@ -60,10 +78,10 @@ def write_labeled_csv_data(data, filename_out, sharding, shuffle,
     return shard_filenames
 
 
-def _write_csv(dataframe, filename, shuffle, write_class_weights):
+def _write_csv(dataframe, filename, shuffle, write_class_weights, model_params_dir):
     if write_class_weights:
         class_weights = (dataframe.groupby('category').nunique()['curr_img'] / dataframe.shape[0]) ** -1
-        class_weights.to_csv(filename.replace('.', '_class_weights.'), index=False)
+        class_weights.to_csv(model_params_dir + 'class_weights.csv', index=False)
     if shuffle:
         dataframe = dataframe.sample(frac=1.0).reset_index(drop=True)
     dataframe.to_csv(filename, index=False)
@@ -95,19 +113,26 @@ if __name__ == '__main__':
                         help='How many samples from each category will be taken.')
     parser.add_argument('--num_shards', type=int, default=10,
                         help='How many shards will be created from the data to be written.')
+    parser.add_argument('--unlabeled', action="store_true", default=False,
+                        help='If the data is not labeled then only the img pairs will be stored.')
+    parser.add_argument('--img_dir', type=str, default='data/images/test',
+                        help='file path for where the test images are listed.')
+    parser.add_argument('--model_params_dir', type=str, default='model_params/',
+                        help='File path for where the class weights will be written to.')
     params = vars(parser.parse_args())
 
-    file_in = params['speed_file']
-    data = create_image_value_pairs(file_in, bucket_size=params['bucket_size'])
-    print(data.shape)
+    data = create_image_pairs(params['img_dir']) if params['unlabeled'] else \
+        create_image_value_pairs(params['speed_file'], bucket_size=params['bucket_size'])
+
     if params['data_split']:
         data = data_split(data,
                           lookback=params['lookback'],
                           filename_out=params['output_file'],
                           split=params['split_inc'])
-    print(data.shape)
+
     shard_filenames = write_labeled_csv_data(data, params['output_file'],
                                              sharding=params['shard'],
                                              records_per_category=params['records_per_category'],
                                              shuffle=params['shuffle'],
-                                             write_class_weights=params['write_class_weights'])
+                                             write_class_weights=params['write_class_weights'],
+                                             model_params_dir=params['model_params_dir'])

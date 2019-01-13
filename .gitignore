@@ -107,3 +107,4 @@ venv.bak/
 data/
 intro.md
 .DS_Store
+model_params/
