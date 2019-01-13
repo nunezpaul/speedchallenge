@@ -15,7 +15,7 @@ class Config(object):
                             help='set the learning rate')
         parser.add_argument('--load_model', type=str, default=None,
                             help='file path to saved keras model to load.')
-        parser.add_argument('--bucket_size', type=int, default=3,
+        parser.add_argument('--bucket_size_file', type=str, default='model_params/bucket_size.txt',
                             help='Set the bucket sizing that the data will be categorized into.')
         parser.add_argument('--dropout', type=float, default=0.5,
                             help='Dropout percent to keep during training.')

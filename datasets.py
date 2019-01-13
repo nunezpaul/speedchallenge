@@ -246,7 +246,7 @@ if __name__ == '__main__':
                            batch_size=32,
                            len=2000,
                            training=True,
-                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
+                           class_weights_csv='model_params/class_weights.csv')
 
     for data in (train_data, valid_data, test_data):
         # check image size
@@ -261,6 +261,8 @@ if __name__ == '__main__':
         # check speed size
         print(data.speed.shape)
         assert data.speed.shape == (data.batch_size,)
+
+    print(len(train_data.class_weights))
 
     test_img = tf.random_uniform((32, 400, 600, 6))
     my_test_img_normed = train_data.per_image_standardization(test_img)

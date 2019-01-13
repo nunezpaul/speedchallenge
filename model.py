@@ -10,26 +10,24 @@ from pandas import DataFrame, read_csv
 
 
 class DeepVO(object):
-    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir,
+    def __init__(self, train_data, dropout, bucket_size_file, load_model, opt, lr, tpu, save_dir,
                  categorical_weight, speed_weight, **kwargs):
         self.uuid = uuid.uuid4()
         self.save_dir = save_dir if save_dir else './'
         self.load_model = load_model
         self.dropout = dropout
-        self.bucket_size = bucket_size
-        self.bucket_size_tf = tf.constant(self.bucket_size, dtype=tf.float32, shape=(1, 1))
-        self.num_buckets = 30 // bucket_size
+        self.bucket_size = self._get_bucket_size(bucket_size_file)
+        self.num_buckets = len(train_data.class_weights)
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
-        self.model = self.setup_model(train_data, categorical_weight=categorical_weight, speed_weight=speed_weight )
+        self.model = self.setup_model(train_data, categorical_weight=categorical_weight, speed_weight=speed_weight)
 
-        # Convert model to tpu model
-        # TODO: Fix the model so it works with TPU
-        if tpu:
-            tpu_worker = 'grpc://' + os.environ['COLAB_TPU_ADDR']
-            strategy = tf.contrib.tpu.TPUDistributionStrategy(
-                    tf.contrib.cluster_resolver.TPUClusterResolver(tpu=tpu_worker))
-            self.model = tf.contrib.tpu.keras_to_tpu_model(self.model, strategy=strategy)
+
+    def _get_bucket_size(self, bucket_size_file):
+        with open(bucket_size_file) as f:
+            bucket_size = int(f.read().splitlines()[0])
+        return bucket_size
+
 
     def setup_optimizer(self, opt, lr):
         if self.load_model:
@@ -52,6 +50,12 @@ class DeepVO(object):
             if not os.path.exists(directory):
                 os.makedirs(directory)
 
+        # Write parameters of the model to where the model is saved
+        params = DataFrame()
+        params['bucket_size'] = self.bucket_size
+        params['num_buckets'] = self.num_buckets
+        params.to_csv(saved_model_dir + 'params.csv', index=False)
+
         tensorboard = k.callbacks.TensorBoard(log_dir=f'{self.save_dir}log/{self.uuid}',
                                               histogram_freq=0,
                                               write_graph=True,
@@ -67,12 +71,11 @@ class DeepVO(object):
         reduce_lr = k.callbacks.ReduceLROnPlateau(monitor='val_loss',
                                                   factor=0.2,
                                                   patience=5,
-                                                  min_lr=10 ** -7)
+                                                  min_lr=10 ** -9)
         callbacks += [tensorboard, checkpoint, reduce_lr]
         return callbacks
 
     def setup_model(self, train_data, categorical_weight, speed_weight):
-        print(train_data.speed.shape)
         model_input = k.layers.Input(shape=train_data.img_shape[1:])
         model_output = self.cnn(model_input)
         model = k.models.Model(inputs=model_input, outputs=model_output)
