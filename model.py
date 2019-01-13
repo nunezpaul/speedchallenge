@@ -10,7 +10,8 @@ from pandas import DataFrame, read_csv
 
 
 class DeepVO(object):
-    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir, **kwargs):
+    def __init__(self, train_data, dropout, bucket_size, load_model, opt, lr, tpu, save_dir,
+                 categorical_weight, speed_weight, **kwargs):
         self.uuid = uuid.uuid4()
         self.save_dir = save_dir if save_dir else './'
         self.load_model = load_model
@@ -20,7 +21,7 @@ class DeepVO(object):
         self.num_buckets = 30 // bucket_size
         self.optimizer = self.setup_optimizer(opt, lr)
         self.callbacks = self.setup_callbacks()
-        self.model = self.setup_model(train_data)
+        self.model = self.setup_model(train_data, categorical_weight=categorical_weight, speed_weight=speed_weight )
 
         # Convert model to tpu model
         # TODO: Fix the model so it works with TPU
@@ -70,7 +71,7 @@ class DeepVO(object):
         callbacks += [tensorboard, checkpoint, reduce_lr]
         return callbacks
 
-    def setup_model(self, train_data):
+    def setup_model(self, train_data, categorical_weight, speed_weight):
         print(train_data.speed.shape)
         model_input = k.layers.Input(shape=train_data.img_shape[1:])
         model_output = self.cnn(model_input)

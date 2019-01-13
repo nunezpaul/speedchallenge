@@ -23,6 +23,10 @@ class Config(object):
                             help='Where to save the trained model.')
         parser.add_argument('--epochs', type=int, default=100,
                             help='How many epochs to train the model for.')
+        parser.add_argument('--categorical_weight', type=float, default=1,
+                            help='This factor is multiplied by the categorical loss before adding to all losses.')
+        parser.add_argument('--speed_weight', type=float, default=0,
+                            help='This factor is multiplied by the speed loss before adding to all losses.')
         self.params = vars(parser.parse_args())
 
 
