@@ -13,8 +13,7 @@ class PredConfig(Config):
         parser.add_argument('--pred_file_len', type=int, default=None,
                             help='How many frames to predict from the tfrecord.')
         super(PredConfig, self).__init__(parser)
-        print(self.params)
-
+        
 
 if __name__ == '__main__':
     config = PredConfig()
@@ -28,7 +27,7 @@ if __name__ == '__main__':
                            len=18360,
                            training=True,
                            class_weights_csv='model_params/class_weights.csv')
-    pred_data = TestData(config.parser.pred_file, batch_size=32, len=config.parser.pred_file_len)
+    pred_data = TestData(config.params['pred_file'], batch_size=32, len=config.params['pred_file_len'])
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
