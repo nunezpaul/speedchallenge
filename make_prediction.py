@@ -15,7 +15,8 @@ if __name__ == '__main__':
                            len=2000,
                            training=True,
                            class_weights_csv='model_params/class_weights.csv')
-    valid_data = ValidData('data/tfrecords/val/sorted_train.tfrecord', batch_size=32, len=20400)
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615,
+                           num_buckets=len(train_data.class_weights))
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
