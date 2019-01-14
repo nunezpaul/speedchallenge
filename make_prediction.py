@@ -1,3 +1,5 @@
+import argparse
+
 from config import Config
 from datasets import TestData, TrainData
 from model import DeepVO
@@ -5,11 +7,13 @@ from model import DeepVO
 
 class PredConfig(Config):
     def __init__(self):
-        super(PredConfig, self).__init__()
-        self.parser.add_argument('--pred_file', type=str, default=None,
-                                 help='Which tfrecord to make predictions on model.')
-        self.parser.add_argument('--pred_file_len', type=int, default=None,
-                                 help='How many frames to predict from the tfrecord.')
+        parser = argparse.ArgumentParser(description='Parameters for predicting.')
+        parser.add_argument('--pred_file', type=str, default=None,
+                            help='Which tfrecord to make predictions on model.')
+        parser.add_argument('--pred_file_len', type=int, default=None,
+                            help='How many frames to predict from the tfrecord.')
+        super(PredConfig, self).__init__(parser)
+        print(self.params)
 
 
 if __name__ == '__main__':

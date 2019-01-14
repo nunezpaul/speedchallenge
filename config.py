@@ -2,11 +2,9 @@ import argparse
 
 
 class Config(object):
-    def __call__(self, *args, **kwargs):
-        return self.settings
-
-    def __init__(self):
-        parser = argparse.ArgumentParser(description='Parameters for training model.')
+    def __init__(self, parser=None):
+        if parser is None:
+            parser = argparse.ArgumentParser(description='Parameters for training model.')
         parser.add_argument('--tpu', action="store_true", default=False,
                             help='determine if to be trained on tpu')
         parser.add_argument('--opt', choices=['adam', 'sgd'], default='adam',
