@@ -27,6 +27,7 @@ class Config(object):
                             help='This factor is multiplied by the categorical loss before adding to all losses.')
         parser.add_argument('--speed_weight', type=float, default=0,
                             help='This factor is multiplied by the speed loss before adding to all losses.')
+        self.parser = parser
         self.params = vars(parser.parse_args())
 
 

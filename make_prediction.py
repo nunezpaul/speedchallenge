@@ -1,10 +1,19 @@
 from config import Config
-from datasets import TestData, TrainData, ValidData
+from datasets import TestData, TrainData
 from model import DeepVO
 
 
+class PredConfig(Config):
+    def __init__(self):
+        super(PredConfig, self).__init__()
+        self.parser.add_argument('--pred_file', type=str, default=None,
+                                 help='Which tfrecord to make predictions on model.')
+        self.parser.add_argument('--pred_file_len', type=int, default=None,
+                                 help='How many frames to predict from the tfrecord.')
+
+
 if __name__ == '__main__':
-    config = Config()
+    config = PredConfig()
     if config.params['save_dir']:
         from google.colab import drive
         drive.mount('gdrive')
@@ -15,9 +24,8 @@ if __name__ == '__main__':
                            len=18360,
                            training=True,
                            class_weights_csv='model_params/class_weights.csv')
-    valid_data = ValidData('data/tfrecords/val/sorted_train.tfrecord', batch_size=32, len=20400,
-                           num_buckets=len(train_data.class_weights))
+    pred_data = TestData(config.parser.pred_file, batch_size=32, len=config.parser.pred_file_len)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
 
-    prediction = deep_vo.predict(valid_data, save_dir=config.params['save_dir'])
+    prediction = deep_vo.predict(pred_data, save_dir=config.params['save_dir'])
