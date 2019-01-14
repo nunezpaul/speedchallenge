@@ -12,9 +12,9 @@ if __name__ == '__main__':
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
                            batch_size=32,
-                           len=18360,
+                           len=2000,
                            training=True,
-                           class_weights_csv='data/labeled_csv/train/train_class_weights.csv')
+                           class_weights_csv='model_params/class_weights.csv')
     valid_data = ValidData('data/tfrecords/val/sorted_train.tfrecord', batch_size=32, len=20400)
 
     deep_vo = DeepVO(train_data=train_data, **config.params)
