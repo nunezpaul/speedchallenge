@@ -211,15 +211,16 @@ class NonTrainData(DataBase):
 
         labels = []
         if 'category' in output:
-            labels.append(tf.clip_by_value(output['category'], 0, 9))
+            labels.append(tf.clip_by_value(output['category'], 0, self.num_buckets))
             labels.append(output['speed'])
 
         return [stacked_img] + labels
 
 
 class ValidData(NonTrainData):
-    def __init__(self, file, batch_size, len):
+    def __init__(self, file, batch_size, len, num_buckets):
         super(ValidData, self).__init__(batch_size=batch_size, len=len)
+        self.num_buckets = num_buckets
         # Finish setting up the dataset iterator
         self.img, self.label, self.speed, self.iter = self.setup_dataset_iter([file], self._parse_function)
         self.img = self.per_image_standardization(self.img)
@@ -239,7 +240,6 @@ class TestData(NonTrainData):
 
 
 if __name__ == '__main__':
-    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615)
     test_data = TestData('data/tfrecords/test/test.tfrecord', batch_size=32, len=10797)
     train_data = TrainData('data/tfrecords/train/train.tfrecord',
                            num_shards=1,
@@ -247,6 +247,8 @@ if __name__ == '__main__':
                            len=2000,
                            training=True,
                            class_weights_csv='model_params/class_weights.csv')
+    valid_data = ValidData('data/tfrecords/val/val.tfrecord', batch_size=32, len=8615,
+                           num_buckets=len(train_data.class_weights))
 
     for data in (train_data, valid_data, test_data):
         # check image size
@@ -263,6 +265,7 @@ if __name__ == '__main__':
         assert data.speed.shape == (data.batch_size,)
 
     print(len(train_data.class_weights))
+    print(valid_data.num_buckets)
 
     test_img = tf.random_uniform((32, 400, 600, 6))
     my_test_img_normed = train_data.per_image_standardization(test_img)
