@@ -10,12 +10,8 @@ def inspect_images(data):
     images = data.img
 
     for idx, img in enumerate(images):
-        img_0 = img[:, :, :3]
-        img_1 = img[:, :, 3:]
-        stacked_img = tf.concat([0.5 * img_0 + 0.5 * img_1,  img_0, img_1], axis=0)
-
         print(f'image {idx}')
-        cv2.imshow('image', stacked_img.numpy()[..., ::-1])
+        cv2.imshow('image', img.numpy()[..., ::-1])
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -31,5 +27,5 @@ if __name__ == '__main__':
     sorted_train_data = TestData('../data/tfrecords/val/sorted_train.tfrecord', batch_size=64, len=20400)
     test_data = TestData('../data/tfrecords/test/test.tfrecord', batch_size=64, len=10797)
 
-    for idx, data in enumerate(( sorted_train_data, test_data)):
+    for idx, data in enumerate((train_data, sorted_train_data, test_data)):
         inspect_images(data)

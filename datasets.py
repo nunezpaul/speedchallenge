@@ -22,11 +22,11 @@ class DataBase(object):
         }
 
         # Image crop dimensions
-        self.crop_width = 640
+        self.crop_width = 300
         self.crop_height = 300
 
         # Combined total num channels
-        self.num_channels = 6
+        self.num_channels = 3
         self.img_shape = (self.batch_size, self.crop_height, self.crop_width, self.num_channels)
 
     def __len__(self):
@@ -117,35 +117,29 @@ class TrainData(DataBase):
         prev_img = tf.image.decode_jpeg(output['prev_img'])
         curr_img = tf.image.decode_jpeg(output['curr_img'])
 
-        # Stack the images by their channel and apply the same random crop
-        stacked_img = tf.concat([prev_img, curr_img], axis=-1)
-        stacked_img = tf.image.random_crop(stacked_img, [self.crop_height, self.crop_width, self.num_channels])
-        stacked_img = tf.to_float(stacked_img) / 255.  # rescaling [0 1)
+        # Add the images together and normalize to be between 0 and 1
+        combined_img = 0.5 * tf.to_float(prev_img + curr_img)
+        combined_img = combined_img / 255.
 
-        # Split the data and restack them (side-by-side) to apply the same random image processing
-        side_by_side_img = tf.concat([stacked_img[:, :, :3], stacked_img[:, :, 3:]], 0)
+        # Stack the images by their channel and apply the same random crop
+        combined_img = tf.image.random_crop(combined_img, [self.crop_height, self.crop_width, self.num_channels])
 
         # Selecting one random augmentations (or none) to apply to the image pairs
         aug_process = tf.random_uniform(shape=(), minval=0, maxval=6, dtype=tf.int64)
-        side_by_side_img = tf.cond(tf.less(aug_process, 2),
-                                   lambda: self._true_fn_l1(side_by_side_img, aug_process),
-                                   lambda: self._false_fn_l1(side_by_side_img, aug_process))
+        combined_img = tf.cond(tf.less(aug_process, 2),
+                               lambda: self._true_fn_l1(combined_img, aug_process),
+                               lambda: self._false_fn_l1(combined_img, aug_process))
 
         # Randomly flip the images vertically or horizontally
-        side_by_side_img = tf.image.random_flip_left_right(side_by_side_img)
-        side_by_side_img = tf.image.random_flip_up_down(side_by_side_img)
-
-        # Restack the imgs by their channel
-        stacked_img = tf.concat([side_by_side_img[:self.crop_height, :, :],
-                                 side_by_side_img[self.crop_height:, :, :]],
-                                axis=-1)
+        combined_img = tf.image.random_flip_left_right(combined_img)
+        combined_img = tf.image.random_flip_up_down(combined_img)
 
         labels = []
         if 'category' in output:
             labels.append(output['category'])
             labels.append(output['speed'])
 
-        return [stacked_img] + labels
+        return [combined_img] + labels
 
     # This section determines which random function for data augmentation is applied while training
     def _true_fn_l1(self, img, val):
@@ -205,16 +199,16 @@ class NonTrainData(DataBase):
         prev_img = tf.image.decode_and_crop_jpeg(output['prev_img'], crop_window)
         curr_img = tf.image.decode_and_crop_jpeg(output['curr_img'], crop_window)
 
-        # Stack the two images and normalize them
-        stacked_img = tf.concat([prev_img, curr_img], axis=-1)
-        stacked_img = tf.to_float(stacked_img) / 255.
+        # Add the images together and normalize to be between 0 and 1
+        combined_img = 0.5 * tf.to_float(prev_img + curr_img)
+        combined_img = combined_img / 255.
 
         labels = []
         if 'category' in output:
             labels.append(tf.clip_by_value(output['category'], 0, self.num_buckets))
             labels.append(output['speed'])
 
-        return [stacked_img] + labels
+        return [combined_img] + labels
 
 
 class ValidData(NonTrainData):

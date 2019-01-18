@@ -7,7 +7,7 @@ import tensorflow as tf
 from config import Config
 from datasets import TrainData, ValidData
 from pandas import DataFrame, read_csv
-
+from keras.applications import VGG16
 
 class DeepVO(object):
     def __init__(self, train_data, dropout, bucket_size_file, load_model, opt, lr, tpu, save_dir,
@@ -110,52 +110,13 @@ class DeepVO(object):
         return speed_output
 
     def cnn(self, model_input):
-        conv1 = k.layers.ZeroPadding2D((3, 3))(model_input)
-        conv1 = k.layers.Conv2D(64, kernel_size=(7, 7), strides=2, padding='valid', name='conv1')(conv1)
-        conv1 = k.layers.BatchNormalization()(conv1)
-        conv1 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu1')(conv1)
+        vgg = VGG16(weights='imagenet',
+                       include_top=False,
+                       input_shape=model_input.shape.as_list()[1:])
+        vgg.trainable = False
+        output = vgg(model_input)
 
-        conv2 = k.layers.ZeroPadding2D((2, 2))(conv1)
-        conv2 = k.layers.Conv2D(128, kernel_size=(5, 5), strides=2, padding='valid', name='conv2')(conv2)
-        conv2 = k.layers.BatchNormalization()(conv2)
-        conv2 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu2')(conv2)
-
-        conv3a = k.layers.ZeroPadding2D((2, 2))(conv2)
-        conv3a = k.layers.Conv2D(256, kernel_size=(5, 5), strides=2, padding='valid', name='conv3a')(conv3a)
-        conv3a = k.layers.BatchNormalization()(conv3a)
-        conv3a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3a')(conv3a)
-
-        conv3b = k.layers.ZeroPadding2D()(conv3a)
-        conv3b = k.layers.Conv2D(256, kernel_size=(3, 3), strides=1, padding='valid', name='conv3b')(conv3b)
-        conv3b = k.layers.BatchNormalization()(conv3b)
-        conv3b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu3b')(conv3b)
-
-        conv4 = k.layers.ZeroPadding2D()(conv3b)
-        conv4 = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv4a')(conv4)
-        conv4 = k.layers.BatchNormalization()(conv4)
-        conv4 = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4')(conv4)
-
-        conv4b = k.layers.ZeroPadding2D()(conv4)
-        conv4b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv4b')(conv4b)
-        conv4b = k.layers.BatchNormalization()(conv4b)
-        conv4b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu4b')(conv4b)
-
-        conv5a = k.layers.ZeroPadding2D()(conv4b)
-        conv5a = k.layers.Conv2D(512, kernel_size=(3, 3), strides=2, padding='valid', name='conv5a')(conv5a)
-        conv5a = k.layers.BatchNormalization()(conv5a)
-        conv5a = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5a')(conv5a)
-
-        conv5b = k.layers.ZeroPadding2D()(conv5a)
-        conv5b = k.layers.Conv2D(512, kernel_size=(3, 3), strides=1, padding='valid', name='conv5b')(conv5b)
-        conv5b = k.layers.BatchNormalization()(conv5b)
-        conv5b = k.layers.Lambda(lambda x: k.layers.activations.relu(x), name='relu5b')(conv5b)
-
-        conv6 = k.layers.ZeroPadding2D()(conv5b)
-        conv6 = k.layers.Conv2D(1024, kernel_size=(3, 3), strides=2, padding='valid', name='conv6')(conv6)
-        conv6 = k.layers.BatchNormalization()(conv6)
-        conv6 = k.layers.MaxPool2D(pool_size=(2, 3))(conv6)  # only difference in addition from original paper
-
-        flat = k.layers.Flatten()(conv6)
+        flat = k.layers.Flatten()(output)
 
         fc6 = k.layers.Dense(1024, activation='relu', name='fc6')(flat)
         fc6_dropout = k.layers.Dropout(self.dropout)(fc6)
